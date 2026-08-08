@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    />
+    <title>LMMS Path Relinker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="mark-link"></span>
+          </div>
+          <div class="brand-text">
+            <h1>LMMS Path Relinker</h1>
+            <p>Repair broken sample paths across hundreds of projects at once</p>
+          </div>
+        </div>
+        <div class="privacy-pill" title="No network access, no uploads">
+          <span class="dot"></span> Runs entirely on this machine
+        </div>
+      </header>
+
+      <!-- Step 1 ---------------------------------------------------------- -->
+      <section class="step" data-step="1">
+        <div class="step-head">
+          <span class="step-num">1</span>
+          <h2>Choose your projects</h2>
+        </div>
+
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-inner">
+            <div class="drop-icon" aria-hidden="true">
+              <span class="folder"></span>
+            </div>
+            <p class="drop-title">Drop LMMS project folder or ZIP here</p>
+            <p class="drop-sub">
+              Scans every <code>.mmp</code> and <code>.mmpz</code> inside, at any depth
+            </p>
+            <div class="button-row">
+              <button type="button" data-choose="folder">Browse folder</button>
+              <button type="button" data-choose="zip">Browse ZIP</button>
+              <button type="button" data-choose="file">Single project</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="source-chip" class="source-chip" hidden>
+          <span class="chip-icon" aria-hidden="true"></span>
+          <div class="chip-body">
+            <span class="chip-label">Selected</span>
+            <code id="source-path"></code>
+          </div>
+          <button id="clear-source" type="button" class="ghost" title="Clear">Change</button>
+        </div>
+      </section>
+
+      <!-- Step 2 ---------------------------------------------------------- -->
+      <section class="step" data-step="2">
+        <div class="step-head">
+          <span class="step-num">2</span>
+          <h2>Describe the path change</h2>
+        </div>
+
+        <div class="field-stack">
+          <label class="field">
+            <span class="field-label">
+              Incorrect path
+              <em>the broken folder LMMS reports</em>
+            </span>
+            <input
+              id="old-path"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="C:\Users\OldUser\Desktop\Samples\Project Audio\"
+            />
+          </label>
+
+          <div class="arrow-row" aria-hidden="true"><span class="arrow"></span></div>
+
+          <label class="field">
+            <span class="field-label">
+              Replacement path
+              <em>where the samples live now</em>
+            </span>
+            <input
+              id="new-path"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="C:\Users\NewUser\Documents\lmms\samples\gigs\"
+            />
+          </label>
+        </div>
+
+        <div id="live-example" class="live-example" hidden>
+          <span class="example-label">Preview</span>
+          <div class="example-lines">
+            <div class="ex-line"><span class="ex-tag old">before</span><code id="ex-before"></code></div>
+            <div class="ex-line"><span class="ex-tag new">after</span><code id="ex-after"></code></div>
+          </div>
+        </div>
+
+        <div id="hint-box" class="hint-box" hidden></div>
+
+        <label class="switch-row">
+          <input id="separator-variants" type="checkbox" checked />
+          <span class="switch" aria-hidden="true"></span>
+          <span class="switch-text">
+            Match either slash direction <strong>(on by default)</strong>
+            <em>
+              LMMS saves Windows paths with forward slashes, so <code>C:\Users\…</code> is
+              stored as <code>C:/Users/…</code>. With this on, both forms are found and the
+              replacement keeps whichever direction your projects use. Turn it off only for a
+              strictly literal match — for example if a folder name genuinely contains a
+              backslash, which is legal on macOS and Linux.
+            </em>
+          </span>
+        </label>
+      </section>
+
+      <!-- Step 3 ---------------------------------------------------------- -->
+      <section class="step" data-step="3">
+        <div class="step-head">
+          <span class="step-num">3</span>
+          <h2>Scan, review, repair</h2>
+        </div>
+
+        <div class="actions">
+          <button id="scan-btn" type="button" class="primary" disabled>Scan</button>
+          <button id="repair-btn" type="button" class="go" disabled>Repair</button>
+          <span id="status" class="status"></span>
+        </div>
+
+        <div id="progress" class="progress" hidden><div id="progress-bar"></div></div>
+      </section>
+
+      <!-- Preview --------------------------------------------------------- -->
+      <section id="preview" class="panel" hidden>
+        <div class="panel-head">
+          <h2>Preview</h2>
+          <span class="panel-note">Nothing has been modified yet</span>
+        </div>
+
+        <p id="headline" class="headline"></p>
+        <div id="preview-summary" class="summary-grid"></div>
+        <div id="variant-note" class="callout" hidden></div>
+
+        <div id="real-example" class="live-example inset" hidden>
+          <span class="example-label">From your projects</span>
+          <div class="example-lines">
+            <div class="ex-line"><span class="ex-tag old">before</span><code id="real-before"></code></div>
+            <div class="ex-line"><span class="ex-tag new">after</span><code id="real-after"></code></div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="preview-table">
+            <thead>
+              <tr>
+                <th>Project file</th>
+                <th>Format</th>
+                <th class="num">Occurrences</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p id="preview-truncated" class="hint" hidden></p>
+      </section>
+
+      <!-- Result ---------------------------------------------------------- -->
+      <section id="result" class="panel" hidden>
+        <div class="panel-head">
+          <h2>Repair complete</h2>
+          <span id="result-note" class="panel-note"></span>
+        </div>
+
+        <div id="result-summary" class="summary-grid"></div>
+
+        <div class="output-row">
+          <div class="output-body">
+            <span class="chip-label">Saved to</span>
+            <code id="output-location"></code>
+          </div>
+          <button id="reveal-btn" type="button">Show in folder</button>
+        </div>
+        <p id="report-paths" class="hint"></p>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
