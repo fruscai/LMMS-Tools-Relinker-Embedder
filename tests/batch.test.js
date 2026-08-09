@@ -20,8 +20,8 @@ const { buildReport, toCsv, toText } = require('../src/core/report');
 const FIXTURES = path.join(__dirname, 'fixtures');
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
-const OLD_ROOT = 'C:/Users/Administrator/Desktop/future_garage_original/';
-const NEW_ROOT = 'C:/Users/NewUser/Documents/lmms/samples/GIGS/';
+const OLD_ROOT = 'C:/Users/Example/Desktop/Demo Samples/';
+const NEW_ROOT = 'C:/Users/NewUser/Documents/lmms/samples/gig/';
 
 async function tempDir(label) {
   return fsp.mkdtemp(path.join(os.tmpdir(), `relinker-${label}-`));

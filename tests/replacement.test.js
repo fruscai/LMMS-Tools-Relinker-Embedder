@@ -17,8 +17,8 @@ const FIXTURES = path.join(__dirname, 'fixtures');
 const fixture = (name) => path.join(FIXTURES, name);
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
-const REAL_OLD = 'C:/Users/Administrator/Desktop/future_garage_original/';
-const REAL_NEW = 'C:/Users/NewUser/Documents/lmms/samples/GIGS/';
+const REAL_OLD = 'C:/Users/Example/Desktop/Demo Samples/';
+const REAL_NEW = 'C:/Users/NewUser/Documents/lmms/samples/gig/';
 
 function loadFixtureText() {
   return decodeProjectText(fs.readFileSync(fixture('fixture.mmp'))).text;
@@ -76,7 +76,7 @@ test('TEST 7 — a non-matching path leaves the project completely unchanged', (
 test('LMMS stores Windows paths with forward slashes; separator variants find them', () => {
   const text = loadFixtureText();
   // What a Windows user actually pastes out of the LMMS error dialog.
-  const pastedByUser = 'C:\\Users\\Administrator\\Desktop\\future_garage_original\\';
+  const pastedByUser = 'C:\\Users\\Example\\Desktop\\Demo Samples\\';
 
   const off = replacePathRoot(text, pastedByUser, REAL_NEW, {
     matchSeparatorVariants: false,

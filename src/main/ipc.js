@@ -15,6 +15,7 @@ const path = require('path');
 const engine = require('../core/engine');
 const { extractZip, createZip } = require('../core/zip');
 const { buildReport, writeReports } = require('../core/report');
+const { outputPathFor } = require('../core/naming');
 
 /** Temp directories created this session, removed on exit. */
 const tempDirs = new Set();
@@ -56,34 +57,13 @@ async function prepareSource(sourcePath) {
   return { kind: 'file', workingRoot: sourcePath };
 }
 
-/** Pick a non-colliding output location next to the source. */
-async function chooseOutputPath(sourcePath, kind) {
-  const dir = path.dirname(sourcePath);
-  const ext = path.extname(sourcePath);
-  const base = path.basename(sourcePath, ext);
-
-  let candidate;
-  if (kind === 'folder') {
-    candidate = path.join(path.dirname(sourcePath), `${path.basename(sourcePath)}_RELINKED`);
-  } else if (kind === 'zip') {
-    candidate = path.join(dir, `${base}_RELINKED.zip`);
-  } else {
-    candidate = path.join(dir, `${base}_RELINKED${ext}`);
-  }
-
-  // Never clobber an existing result; add a counter instead.
-  let unique = candidate;
-  let n = 2;
-  while (fs.existsSync(unique)) {
-    if (kind === 'folder') {
-      unique = `${candidate}_${n}`;
-    } else {
-      const e = path.extname(candidate);
-      unique = path.join(path.dirname(candidate), `${path.basename(candidate, e)}_${n}${e}`);
-    }
-    n += 1;
-  }
-  return unique;
+/**
+ * Pick a non-colliding output location next to the source, named for the
+ * stages applied. The GUI only relinks, so that is "_RELINKED"; the shared
+ * helper produces "_BUNDLED" and "_RELINKED_BUNDLED" for the CLI pipeline.
+ */
+async function chooseOutputPath(sourcePath, kind, stages = { relink: true }) {
+  return outputPathFor(sourcePath, stages, { kind });
 }
 
 function sendProgress(payload) {

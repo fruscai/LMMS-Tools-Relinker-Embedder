@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LMMS Sample Embedder</title>
+<style>
+:root{
+  --bg:#14101a;--panel:#1c1726;--panel-2:#241d31;--raised:#2c2440;
+  --border:#3a2f52;--border-soft:#2f2743;
+  --text:#ece8f4;--text-dim:#b0a6c4;--text-faint:#7d7295;
+  --accent:#a97bf0;--accent-2:#c8a8ff;--ok:#4fc98a;--warn:#f0b45e;
+  --bad:#ef6b6b;--bad-dim:#42202b;--radius:14px;--radius-sm:9px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(1100px 600px at 12% -10%,#2a1c40 0,transparent 55%),
+             radial-gradient(900px 500px at 100% 0,#1e1733 0,transparent 50%),var(--bg);
+  background-attachment:fixed;color:var(--text);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
+.shell{max-width:960px;margin:0 auto;padding:26px 30px 56px}
+
+.app-header{display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding-bottom:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(145deg,#8b5fd6,#4b2f7a);border:1px solid #a97bf0;
+  display:grid;place-items:center;box-shadow:0 6px 18px rgba(169,123,240,.3);flex:none}
+.chip3{width:20px;height:15px;border:2.5px solid #efe6ff;border-radius:3px;position:relative}
+.chip3::before,.chip3::after{content:"";position:absolute;top:3px;bottom:3px;width:2.5px;
+  background:#efe6ff}
+.chip3::before{left:-5px}.chip3::after{right:-5px}
+.brand-text h1{margin:0;font-size:19px;font-weight:650;letter-spacing:-.2px}
+.brand-text p{margin:2px 0 0;color:var(--text-dim);font-size:13px}
+.privacy-pill{display:flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
+  background:rgba(79,201,138,.09);border:1px solid rgba(79,201,138,.28);
+  color:#7fdcb2;font-size:12.5px;white-space:nowrap}
+.privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
+  box-shadow:0 0 8px var(--ok)}
+
+.tool-note{padding:13px 16px;border-radius:var(--radius-sm);
+  background:rgba(169,123,240,.08);border:1px solid rgba(169,123,240,.28);
+  color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:26px}
+.tool-note strong{color:var(--accent-2)}
+
+.step{margin-bottom:26px}
+.step-head{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.step-num{width:23px;height:23px;border-radius:50%;background:var(--raised);
+  border:1px solid var(--border);color:var(--text-dim);font-size:12px;font-weight:700;
+  display:grid;place-items:center;flex:none}
+.step-head h2{margin:0;font-size:14.5px;font-weight:600}
+
+.dropzone{border:1.5px dashed var(--border);border-radius:var(--radius);
+  background:linear-gradient(180deg,rgba(36,29,49,.55),rgba(28,23,38,.55));
+  transition:border-color .18s,background .18s}
+.dropzone.dragging{border-color:var(--accent);background:rgba(169,123,240,.12)}
+.dropzone-inner{padding:32px 22px 28px;text-align:center}
+.folder{display:inline-block;width:46px;height:34px;border-radius:5px 8px 8px 8px;
+  background:linear-gradient(160deg,#463a63,#2e2743);border:1px solid #5a4a80;position:relative}
+.folder::before{content:"";position:absolute;top:-6px;left:0;width:19px;height:7px;
+  border-radius:4px 4px 0 0;background:#4d3f6e;border:1px solid #5a4a80;border-bottom:none}
+.drop-icon{margin-bottom:13px}
+.drop-title{margin:0;font-size:16px;font-weight:600}
+.drop-sub{margin:6px 0 16px;color:var(--text-faint);font-size:12.5px}
+.button-row{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+
+.source-chip{margin-top:12px;display:flex;align-items:center;gap:13px;padding:12px 14px;
+  border-radius:var(--radius-sm);background:var(--panel);border:1px solid var(--border)}
+.chip-icon{width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 9px var(--accent);flex:none}
+.chip-body{min-width:0;flex:1}
+.chip-label{display:block;color:var(--text-faint);font-size:11px;text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:2px}
+.chip-body code{color:var(--accent-2);word-break:break-all}
+
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:780px){.mode-grid{grid-template-columns:1fr}}
+.mode-card{text-align:left;display:flex;flex-direction:column;gap:7px;padding:16px 17px;
+  border-radius:var(--radius);background:var(--panel);border:1.5px solid var(--border);
+  color:var(--text);cursor:pointer;font-family:inherit;
+  transition:border-color .15s,background .15s}
+.mode-card:hover{border-color:#5a4a80;background:var(--panel-2)}
+.mode-card.selected{border-color:var(--accent);background:rgba(169,123,240,.1)}
+.mode-title{font-size:14px;font-weight:650}
+.mode-card.selected .mode-title{color:var(--accent-2)}
+.mode-body{font-size:12.5px;color:var(--text-faint);line-height:1.55}
+.pick-row{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{background:#120f18;color:var(--text);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 11px;font-family:ui-monospace,Menlo,monospace;
+  font-size:12.5px;max-width:100%}
+select:focus{outline:none;border-color:var(--accent)}
+
+.samples-box{background:var(--panel);border:1px solid var(--border-soft);
+  border-radius:var(--radius);padding:15px 17px}
+.samples-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.samples-found{color:var(--ok);font-weight:600}
+.samples-none{color:var(--warn);font-weight:600}
+
+button{background:var(--raised);color:var(--text);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;
+  font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s,transform .08s}
+button:hover:not(:disabled){border-color:#6b58a0;background:#332a49}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:linear-gradient(180deg,#a97bf0,#7d51c9);border-color:#a97bf0;
+  color:#140d21;font-weight:650;min-width:100px}
+button.go{background:linear-gradient(180deg,#4fc98a,#2f9f68);border-color:#4fc98a;
+  color:#04140c;font-weight:650;min-width:130px}
+button.ghost{background:transparent;color:var(--text-dim);padding:6px 12px;font-size:12px}
+
+.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.status{color:var(--text-dim);font-size:13px}
+.status.error{color:var(--bad)}
+.status.done{color:var(--ok)}
+.progress{margin-top:13px;height:5px;border-radius:999px;background:var(--raised);overflow:hidden}
+#progress-bar{height:100%;width:0;border-radius:999px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .2s}
+
+.panel{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);
+  padding:19px 20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin-bottom:15px;flex-wrap:wrap}
+.panel-head h2{margin:0;font-size:15px;font-weight:600}
+.panel-note{color:var(--text-faint);font-size:12px}
+.headline{margin:0 0 15px;font-size:14.5px;color:var(--text-dim)}
+.headline strong{color:var(--text);font-weight:650}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  gap:9px;margin-bottom:15px}
+.stat{background:var(--panel-2);border:1px solid var(--border-soft);
+  border-radius:var(--radius-sm);padding:11px 13px}
+.stat .value{font-size:21px;font-weight:700;letter-spacing:-.4px;line-height:1.15}
+.stat .label{color:var(--text-faint);font-size:11.5px;margin-top:2px}
+.stat.good .value{color:var(--ok)}
+.stat.bad .value{color:var(--bad)}
+.stat.accent .value{color:var(--accent-2)}
+.advice{padding:12px 15px;border-radius:var(--radius-sm);margin-bottom:15px;
+  font-size:13px;line-height:1.6}
+.advice.bad{background:rgba(239,107,107,.09);border:1px solid rgba(239,107,107,.3);color:#ffb3b3}
+.advice.good{background:rgba(79,201,138,.08);border:1px solid rgba(79,201,138,.28);color:#9de6c0}
+.advice strong{color:#fff}
+
+.table-wrap{max-height:300px;overflow:auto;border:1px solid var(--border-soft);
+  border-radius:var(--radius-sm)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border-soft);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+th{position:sticky;top:0;background:var(--panel-2);color:var(--text-dim);font-weight:600;
+  font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;z-index:1}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.file{white-space:normal;word-break:break-all;
+  font-family:ui-monospace,Menlo,monospace;color:var(--text-dim)}
+.badge{padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
+.badge.ok{background:rgba(79,201,138,.16);color:#7fdcb2}
+.badge.bad{background:var(--bad-dim);color:#ff9d9d}
+.badge.dim{background:var(--raised);color:var(--text-faint)}
+
+.output-row{display:flex;gap:14px;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;padding:13px 15px;border-radius:var(--radius-sm);background:var(--panel-2);
+  border:1px solid var(--border-soft)}
+.output-body{min-width:0;flex:1}
+.output-body code{color:var(--accent-2);word-break:break-all}
+.hint{color:var(--text-faint);font-size:11.5px;margin:10px 0 0;word-break:break-all}
+.footer{margin-top:34px;padding:16px 18px;border-radius:var(--radius-sm);
+  background:var(--panel);border:1px solid var(--border-soft);
+  color:var(--text-faint);font-size:12.5px;line-height:1.6}
+.footer strong{color:var(--text-dim)}
+.footer em{color:var(--accent-2);font-style:normal}
+.unsupported{padding:14px 16px;border-radius:var(--radius-sm);background:var(--bad-dim);
+  border:1px solid var(--bad);color:#ffc3c3;margin-bottom:20px}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#3a2f52;border-radius:99px;border:3px solid var(--panel)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><span class="chip3"></span></div>
+      <div class="brand-text">
+        <h1>LMMS Sample Embedder</h1>
+        <p>Embeds sample audio into LMMS project files</p>
+      </div>
+    </div>
+    <div class="privacy-pill"><span class="dot"></span> Runs entirely in your browser</div>
+  </header>
+
+  <div id="unsupported" class="unsupported" hidden></div>
+
+  <div class="tool-note">
+    Writes sample audio into the project file, so it plays without the original audio files.
+    All other files are copied unchanged.
+  </div>
+
+  <!-- 1 : source -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">1</span><h2>Choose a folder or ZIP</h2></div>
+    <div id="dropzone" class="dropzone">
+      <div class="dropzone-inner">
+        <div class="drop-icon" aria-hidden="true"><span class="folder"></span></div>
+        <p class="drop-title">Drop a project folder or ZIP here</p>
+        <p class="drop-sub">
+          Folder or ZIP only
+        </p>
+        <div class="button-row">
+          <button type="button" id="pick-folder">Choose folder</button>
+          <button type="button" id="pick-zip">Choose ZIP</button>
+        </div>
+      </div>
+    </div>
+    <div id="source-chip" class="source-chip" hidden>
+      <span class="chip-icon"></span>
+      <div class="chip-body"><span class="chip-label">Selected</span><code id="source-path"></code></div>
+      <button id="clear-source" type="button" class="ghost">Change</button>
+    </div>
+    <input id="file-folder" type="file" webkitdirectory directory multiple hidden />
+    <input id="file-zip" type="file" accept=".zip" hidden />
+    <input id="file-samples" type="file" webkitdirectory directory multiple hidden />
+  </section>
+
+  <!-- 2 : samples -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">2</span><h2>Where are the audio files?</h2></div>
+    <div class="samples-box">
+      <div class="samples-line">
+        <span id="samples-status" class="samples-none">no source selected yet</span>
+        <button type="button" id="pick-samples" class="ghost">Add a sample folder…</button>
+      </div>
+      <p class="hint" style="margin-top:8px">
+        Audio in the source is found automatically. Add your <code>gig</code> folder if the
+        samples are stored elsewhere. Matched by filename.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3 : scope -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">3</span><h2>What should be embedded?</h2></div>
+    <div class="mode-grid">
+      <button type="button" class="mode-card selected" data-scope="all">
+        <span class="mode-title">Everything</span>
+        <span class="mode-body">
+          Every project and autosave
+        </span>
+      </button>
+      <button type="button" class="mode-card" data-scope="one">
+        <span class="mode-title">Final project only</span>
+        <span class="mode-body">
+          One project. Everything else is copied unchanged
+        </span>
+      </button>
+    </div>
+    <div id="pick-project" class="pick-row" hidden>
+      <span class="chip-label" style="margin:0">Project</span>
+      <select id="project-select"></select>
+    </div>
+  </section>
+
+  <!-- 4 : run -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">4</span><h2>Check, then embed</h2></div>
+    <div class="actions">
+      <button id="scan-btn" type="button" class="primary" disabled>Check</button>
+      <button id="run-btn" type="button" class="go" disabled>Embed &amp; save</button>
+      <span id="status" class="status"></span>
+    </div>
+    <div id="progress" class="progress" hidden><div id="progress-bar"></div></div>
+  </section>
+
+  <!-- scan results -->
+  <section id="scan-panel" class="panel" hidden>
+    <div class="panel-head"><h2>Check</h2><span class="panel-note">No files written yet</span></div>
+    <p id="scan-headline" class="headline"></p>
+    <div id="scan-summary" class="summary-grid"></div>
+    <div id="scan-advice" class="advice" hidden></div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Project</th><th class="num">Refs</th><th class="num">Found</th><th>Status</th>
+      </tr></thead><tbody id="scan-body"></tbody></table>
+    </div>
+  </section>
+
+  <!-- result -->
+  <section id="result-panel" class="panel" hidden>
+    <div class="panel-head"><h2>Done</h2><span id="result-note" class="panel-note"></span></div>
+    <div id="result-summary" class="summary-grid"></div>
+    <div class="output-row">
+      <div class="output-body"><span class="chip-label">Saved as</span><code id="output-name"></code></div>
+      <button id="download-btn" type="button" class="go" hidden>Save file</button>
+    </div>
+    <p id="result-hint" class="hint"></p>
+  </section>
+
+  <footer class="footer">
+    Use <em>Chrome, Brave or Edge</em>. Large jobs write straight to a folder you pick; other
+    browsers get a ZIP. Works offline, nothing is uploaded.
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* ===========================================================================
+   LMMS Sample Embedder — standalone browser build.
+
+   Writes sample audio into the project as base64, following LMMS's own format:
+
+     save:  src="…"; if src is empty -> sampledata="<base64>"
+     load:  if src non-empty -> load that file (error if missing, NO fallback)
+            else if sampledata -> SampleBuffer::fromBase64(...)
+
+   So `src` must be REMOVED, not blanked, or the embedded audio is ignored.
+   The payload is a raw SampleFrame array: two float32s (L,R) per frame.
+   =========================================================================== */
+
+const SUPPORTED = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+const CAN_STREAM = typeof window.showDirectoryPicker === 'function';
+
+if (!SUPPORTED) {
+  const b = document.getElementById('unsupported');
+  b.hidden = false;
+  b.textContent = 'This browser lacks CompressionStream / DecompressionStream, which this tool ' +
+    'needs to read and write .mmpz files. Please use a current Chrome, Brave, Edge or Safari 16.4+.';
+}
+
+const te = new TextEncoder();
+const td = new TextDecoder('utf-8', { fatal: true });
+
+const through = async (bytes, t) =>
+  new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(t)).arrayBuffer());
+const inflateZlib = (b) => through(b, new DecompressionStream('deflate'));
+const deflateZlib = (b) => through(b, new CompressionStream('deflate'));
+const inflateRaw = (b) => through(b, new DecompressionStream('deflate-raw'));
+const deflateRaw = (b) => through(b, new CompressionStream('deflate-raw'));
+
+/* ---------- mmpz ---------- */
+
+async function decompressMmpz(bytes) {
+  if (bytes.length < 5) throw new Error('too short to be a .mmpz');
+  const declared = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, false);
+  const out = await inflateZlib(bytes.subarray(4));
+  if (out.length !== declared) throw new Error(`declared ${declared} != actual ${out.length}`);
+  return out;
+}
+
+async function compressMmpz(payload) {
+  if (!payload.length) return new Uint8Array(4);
+  const d = await deflateZlib(payload);
+  const r = new Uint8Array(4 + d.length);
+  new DataView(r.buffer).setUint32(0, payload.length, false);
+  r.set(d, 4);
+  return r;
+}
+
+/* ---------- WAV -> SampleFrame array ---------- */
+
+function wavToSampleFrames(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tag = (o) => String.fromCharCode(bytes[o], bytes[o+1], bytes[o+2], bytes[o+3]);
+  if (bytes.length < 12 || tag(0) !== 'RIFF') throw new Error('not a RIFF/WAVE file');
+
+  let fmt = null, data = null, off = 12;
+  while (off + 8 <= bytes.length) {
+    const id = tag(off);
+    const size = dv.getUint32(off + 4, true);
+    if (id === 'fmt ' && size >= 16) {
+      fmt = { audioFormat: dv.getUint16(off+8, true), channels: dv.getUint16(off+10, true),
+              sampleRate: dv.getUint32(off+12, true), bits: dv.getUint16(off+22, true) };
+    } else if (id === 'data') {
+      data = bytes.subarray(off + 8, Math.min(off + 8 + size, bytes.length));
+    }
+    off += 8 + size + (size % 2);
+  }
+  if (!fmt) throw new Error('missing fmt chunk');
+  if (!data) throw new Error('missing data chunk');
+  if (fmt.audioFormat !== 1 && fmt.audioFormat !== 3) throw new Error(`unsupported encoding ${fmt.audioFormat}`);
+
+  const bps = fmt.bits / 8, stride = bps * fmt.channels;
+  const frames = Math.floor(data.length / stride);
+  const out = new Uint8Array(frames * 8);
+  const ov = new DataView(out.buffer);
+  const dd = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  const read = (p) => {
+    switch (fmt.bits) {
+      case 8: return (data[p] - 128) / 128;
+      case 16: return dd.getInt16(p, true) / 32768;
+      case 24: { const v = data[p] | (data[p+1] << 8) | (data[p+2] << 16);
+                 return ((v & 0x800000) ? v - 0x1000000 : v) / 8388608; }
+      case 32: return fmt.audioFormat === 3 ? dd.getFloat32(p, true) : dd.getInt32(p, true) / 2147483648;
+      default: throw new Error(`unsupported bit depth ${fmt.bits}`);
+    }
+  };
+  for (let i = 0; i < frames; i++) {
+    const b = i * stride, l = read(b);
+    ov.setFloat32(i * 8, l, true);
+    ov.setFloat32(i * 8 + 4, fmt.channels > 1 ? read(b + bps) : l, true);
+  }
+  return { frames: out, info: fmt, frameCount: frames };
+}
+
+/** Chunked base64 — avoids blowing the argument limit on multi-MB buffers. */
+function toBase64(bytes) {
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  }
+  return btoa(s);
+}
+
+/* ---------- CRC32 + ZIP ---------- */
+
+const CRC = (() => { const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t; })();
+const crc32 = (b) => { let c = 0xffffffff;
+  for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0; };
+
+function readZip(buffer) {
+  const bytes = new Uint8Array(buffer), view = new DataView(buffer);
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd === -1) throw new Error('not a valid ZIP (no end-of-central-directory)');
+  const count = view.getUint16(eocd + 10, true);
+  const cdOff = view.getUint32(eocd + 16, true);
+  if (count === 0xffff || cdOff === 0xffffffff) throw new Error('ZIP64 archives are not supported. Use a folder instead.');
+
+  const entries = []; let p = cdOff;
+  for (let i = 0; i < count; i++) {
+    if (view.getUint32(p, true) !== 0x02014b50) throw new Error('corrupt ZIP central directory');
+    const method = view.getUint16(p + 10, true);
+    const time = view.getUint16(p + 12, true), day = view.getUint16(p + 14, true);
+    const compSize = view.getUint32(p + 20, true);
+    const nameLen = view.getUint16(p + 28, true);
+    const extraLen = view.getUint16(p + 30, true);
+    const commentLen = view.getUint16(p + 32, true);
+    const local = view.getUint32(p + 42, true);
+    const name = new TextDecoder('utf-8').decode(bytes.subarray(p + 46, p + 46 + nameLen));
+    const lhName = view.getUint16(local + 26, true), lhExtra = view.getUint16(local + 28, true);
+    const start = local + 30 + lhName + lhExtra;
+    entries.push({ name, method, time, day, data: bytes.subarray(start, start + compSize),
+                   isDir: /\/$/.test(name) });
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+
+const readEntry = async (e) =>
+  e.method === 0 ? e.data : e.method === 8 ? inflateRaw(e.data)
+  : (() => { throw new Error(`unsupported ZIP method ${e.method} for ${e.name}`); })();
+
+function dosNow(date = new Date()) {
+  return { time: ((date.getHours() & 31) << 11) | ((date.getMinutes() & 63) << 5) | ((date.getSeconds() / 2) & 31),
+           day: (((date.getFullYear() - 1980) & 127) << 9) | (((date.getMonth() + 1) & 15) << 5) | (date.getDate() & 31) };
+}
+
+async function makeRecord(name, bytes, times) {
+  const c = await deflateRaw(bytes);
+  return { name, method: 8, crc: crc32(bytes), compSize: c.length,
+           uncompSize: bytes.length, data: c, ...(times || {}) };
+}
+
+function buildZip(records) {
+  const fb = dosNow(); const chunks = [], central = []; let offset = 0;
+  for (const r of records) {
+    const time = r.time ?? fb.time, day = r.day ?? fb.day;
+    const nb = te.encode(r.name);
+    const lh = new Uint8Array(30 + nb.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, r.method, true); lv.setUint16(10, time, true); lv.setUint16(12, day, true);
+    lv.setUint32(14, r.crc, true); lv.setUint32(18, r.compSize, true); lv.setUint32(22, r.uncompSize, true);
+    lv.setUint16(26, nb.length, true); lh.set(nb, 30);
+    chunks.push(lh, r.data);
+    const cd = new Uint8Array(46 + nb.length), cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(10, r.method, true);
+    cv.setUint16(12, time, true); cv.setUint16(14, day, true);
+    cv.setUint32(16, r.crc, true); cv.setUint32(20, r.compSize, true); cv.setUint32(24, r.uncompSize, true);
+    cv.setUint16(28, nb.length, true); cv.setUint32(42, offset, true); cd.set(nb, 46);
+    central.push(cd);
+    offset += lh.length + r.data.length;
+  }
+  let cs = 0; for (const c of central) cs += c.length;
+  const eo = new Uint8Array(22), ev = new DataView(eo.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, records.length, true);
+  ev.setUint16(10, records.length, true); ev.setUint32(12, cs, true); ev.setUint32(16, offset, true);
+  return new Blob([...chunks, ...central, eo], { type: 'application/zip' });
+}
+
+/* ---------- LMMS reference handling ---------- */
+
+const SAMPLE_NODES = ['audiofileprocessor', 'sampleclip', 'sampletco'];
+// Prefixes carry no slash, so a naive basename() would keep them and miss.
+const LMMS_PREFIX = /^(factorysample|usersample|usergig|usersoundfont|local):/i;
+const AUDIO_EXT = /\.(wav|aiff?|flac|ogg|mp3|raw)$/i;
+
+const sampleNameOf = (src) => {
+  const c = src.replace(/\\/g, '/').replace(LMMS_PREFIX, '');
+  const i = c.lastIndexOf('/');
+  return i === -1 ? c : c.slice(i + 1);
+};
+const isFactory = (src) => /^factorysample:/i.test(src);
+const isProjectFile = (n) => /\.(mmpz|mmp)(\.bak)?$/i.test(n);
+const isCompressedName = (n) => /\.mmpz(\.bak)?$/i.test(n);
+const xmlEscape = (v) => v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const NODE_RE = new RegExp(`<(?:${SAMPLE_NODES.join('|')})\\b[^>]*>`, 'g');
+const TAG_RE  = new RegExp(`<(${SAMPLE_NODES.join('|')})\\b([^>]*?)\\s*src="([^"]*)"([^>]*)>`, 'g');
+
+function collectRefs(xml) {
+  const refs = [];
+  for (const tag of xml.match(NODE_RE) || []) {
+    const m = tag.match(/\bsrc="([^"]*)"/);
+    if (m) refs.push(m[1]);
+  }
+  return refs;
+}
+
+/* ---------- app state ---------- */
+
+const state = { kind: null, label: '', items: [], samples: new Map(),
+                scope: 'all', scanned: null, output: null };
+
+const $ = (id) => document.getElementById(id);
+const setStatus = (m, tone = '') => { $('status').textContent = m || ''; $('status').className = 'status' + (tone ? ' ' + tone : ''); };
+const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
+
+function addSample(name, getBytes) {
+  if (!AUDIO_EXT.test(name)) return;
+  const base = name.split('/').pop();
+  if (!state.samples.has(base)) state.samples.set(base, getBytes);
+  const lower = base.toLowerCase();
+  if (!state.samples.has(lower)) state.samples.set(lower, getBytes);
+}
+const findSample = (name) => state.samples.get(name) || state.samples.get(name.toLowerCase()) || null;
+
+function refreshSamples() {
+  const n = new Set([...state.samples.keys()].map((k) => k.toLowerCase())).size;
+  const el = $('samples-status');
+  if (!state.items.length) { el.textContent = 'no source selected yet'; el.className = 'samples-none'; return; }
+  if (n === 0) { el.textContent = 'no audio files found. Add a sample folder.'; el.className = 'samples-none'; }
+  else { el.textContent = `${n} audio file(s) available`; el.className = 'samples-found'; }
+}
+
+function refreshProjectPicker() {
+  const projects = state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
+  const sel = $('project-select');
+  // Prefer something that looks like a final version, else the last by name.
+  const ranked = [...projects].sort((a, b) => {
+    const score = (n) => (/final/i.test(n) ? 2 : 0) + (/v\d+/i.test(n) ? 1 : 0);
+    const d = score(b.name) - score(a.name);
+    return d !== 0 ? d : a.name.localeCompare(b.name);
+  });
+  sel.innerHTML = ranked.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+}
+
+function setSource(kind, label, items) {
+  state.kind = kind; state.label = label; state.items = items; state.scanned = null;
+  const projects = items.filter((i) => isProjectFile(i.name) && !i.isDir).length;
+  $('source-path').textContent = `${label} (${projects} LMMS file(s), ${items.length} file(s) total)`;
+  $('source-chip').hidden = false;
+  $('dropzone').hidden = true;
+  $('scan-panel').hidden = true; $('result-panel').hidden = true;
+  refreshSamples(); refreshProjectPicker(); refresh();
+}
+
+$('clear-source').addEventListener('click', () => {
+  state.items = []; state.samples.clear(); state.scanned = null;
+  $('source-chip').hidden = true; $('dropzone').hidden = false;
+  $('scan-panel').hidden = true; $('result-panel').hidden = true;
+  refreshSamples(); setStatus(''); refresh();
+});
+
+/* ---------- input ---------- */
+
+async function useZip(file) {
+  setStatus('reading archive…');
+  const entries = readZip(await file.arrayBuffer());
+  const items = entries.map((e) => ({
+    name: e.name, isDir: e.isDir, times: { time: e.time, day: e.day },
+    getBytes: () => readEntry(e),
+    passthrough: (isProjectFile(e.name) || e.isDir) ? null : {
+      name: e.name, method: e.method, crc: new DataView(new Uint8Array(4).buffer).getUint32(0),
+      data: e.data, time: e.time, day: e.day,
+    },
+    raw: e,
+  }));
+  for (const it of items) if (!it.isDir) addSample(it.name, it.getBytes);
+  setSource('zip', file.name, items);
+  setStatus('');
+}
+
+function useFolder(files, label) {
+  const items = [...files].map((f) => ({
+    name: f.webkitRelativePath || f.name, isDir: false,
+    times: dosNow(new Date(f.lastModified)),
+    getBytes: async () => new Uint8Array(await f.arrayBuffer()),
+    passthrough: null, file: f,
+  }));
+  for (const it of items) addSample(it.name, it.getBytes);
+  setSource('folder', label, items);
+  setStatus('');
+}
+
+$('pick-folder').addEventListener('click', () => $('file-folder').click());
+$('pick-zip').addEventListener('click', () => $('file-zip').click());
+$('pick-samples').addEventListener('click', () => $('file-samples').click());
+
+$('file-folder').addEventListener('change', (e) => {
+  if (!e.target.files.length) return;
+  const root = (e.target.files[0].webkitRelativePath || '').split('/')[0] || 'folder';
+  useFolder(e.target.files, root);
+});
+$('file-zip').addEventListener('change', (e) => {
+  if (e.target.files[0]) useZip(e.target.files[0]).catch((err) => setStatus(err.message, 'error'));
+});
+$('file-samples').addEventListener('change', (e) => {
+  let added = 0;
+  for (const f of e.target.files) {
+    if (!AUDIO_EXT.test(f.name)) continue;
+    addSample(f.name, async () => new Uint8Array(await f.arrayBuffer()));
+    added++;
+  }
+  state.scanned = null;
+  refreshSamples(); refresh();
+  setStatus(added ? `added ${added} audio file(s)` : 'No audio files in that folder.',
+    added ? '' : 'error');
+});
+
+['dragenter','dragover'].forEach((t) => document.addEventListener(t, (e) => {
+  e.preventDefault(); $('dropzone').classList.add('dragging'); }));
+['dragleave','drop'].forEach((t) => document.addEventListener(t, (e) => {
+  e.preventDefault(); if (t === 'drop') $('dropzone').classList.remove('dragging'); }));
+document.addEventListener('drop', async (e) => {
+  const f = e.dataTransfer?.files[0];
+  if (!f) return;
+  if (/\.zip$/i.test(f.name)) { try { await useZip(f); } catch (err) { setStatus(err.message, 'error'); } }
+  else setStatus('Drop a ZIP file, or use the Choose folder button.', 'error');
+});
+
+/* ---------- scope ---------- */
+
+for (const card of document.querySelectorAll('.mode-card')) {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.mode-card').forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.scope = card.dataset.scope;
+    state.scanned = null;
+    $('pick-project').hidden = state.scope !== 'one';
+    $('scan-panel').hidden = true; $('result-panel').hidden = true;
+    refresh();
+  });
+}
+$('project-select').addEventListener('change', () => { state.scanned = null; refresh(); });
+
+function targets() {
+  const projects = state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
+  if (state.scope === 'all') return projects;
+  const chosen = $('project-select').value;
+  return projects.filter((p) => p.name === chosen);
+}
+
+function refresh() {
+  const ready = SUPPORTED && state.items.length > 0 && targets().length > 0;
+  $('scan-btn').disabled = !ready;
+  $('run-btn').disabled = !(ready && state.scanned && state.scanned.embeddable > 0);
+}
+
+/* ---------- scan ---------- */
+
+const stat = (v, l, tone = '') =>
+  `<div class="stat ${tone}"><div class="value">${v}</div><div class="label">${l}</div></div>`;
+
+$('scan-btn').addEventListener('click', async () => {
+  setStatus('checking…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
+  $('progress').hidden = false; $('result-panel').hidden = true;
+
+  const rows = [];
+  let refs = 0, embeddable = 0, missingTotal = 0, factoryTotal = 0, emptyTotal = 0;
+  const missingNames = new Set();
+
+  try {
+    const list = targets();
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      let row = { file: item.name, refs: 0, found: 0, status: 'OK', detail: '' };
+      try {
+        const bytes = await item.getBytes();
+        const xml = td.decode(isCompressedName(item.name) ? await decompressMmpz(bytes) : bytes);
+        let found = 0, missing = 0, factory = 0, empty = 0;
+        for (const src of collectRefs(xml)) {
+          if (!src) { empty++; continue; }
+          if (isFactory(src)) { factory++; continue; }
+          const n = sampleNameOf(src);
+          if (findSample(n)) found++; else { missing++; missingNames.add(n); }
+        }
+        row.refs = found + missing + factory;
+        row.found = found;
+        refs += row.refs; embeddable += found; missingTotal += missing;
+        factoryTotal += factory; emptyTotal += empty;
+        if (missing) { row.status = 'MISSING'; row.detail = `${missing} sample(s) not found`; }
+        else if (!found && factory) { row.status = 'FACTORY ONLY'; row.detail = 'uses only LMMS built-in samples'; }
+        else if (!found) { row.status = 'NO SAMPLES'; row.detail = empty ? `${empty} empty slot(s)` : 'nothing to embed'; }
+        else row.detail = `${found} will be embedded`;
+      } catch (err) {
+        row.status = 'ERROR'; row.detail = err.message;
+      }
+      rows.push(row);
+      $('progress-bar').style.width = `${Math.round(((i + 1) / list.length) * 100)}%`;
+    }
+
+    state.scanned = { rows, refs, embeddable, missingTotal };
+
+    $('scan-headline').innerHTML =
+      `<strong>${rows.length}</strong> LMMS file(s) · <strong>${refs}</strong> sample reference(s) · ` +
+      `<strong>${embeddable}</strong> will be embedded · <strong>${missingTotal}</strong> missing`;
+    $('scan-summary').innerHTML = [
+      stat(rows.length, 'LMMS files'),
+      stat(embeddable, 'to embed', 'good'),
+      stat(missingTotal, 'missing', missingTotal ? 'bad' : ''),
+      stat(factoryTotal, 'LMMS built-ins'),
+      stat(emptyTotal, 'empty slots'),
+    ].join('');
+
+    const advice = $('scan-advice');
+    if (missingTotal) {
+      advice.className = 'advice bad';
+      advice.innerHTML = `<strong>${missingTotal} reference(s) were not located.</strong> ` +
+        `Not found: ` +
+        `<code>${esc([...missingNames].slice(0,6).join(', '))}</code>` +
+        `${missingNames.size > 6 ? ', and others' : ''}. Add that folder in step 2.`;
+      advice.hidden = false;
+    } else if (embeddable) {
+      advice.className = 'advice good';
+      advice.innerHTML = 'All samples found.';
+      advice.hidden = false;
+    } else advice.hidden = true;
+
+    $('scan-body').innerHTML = rows.map((r) => `
+      <tr><td class="file">${esc(r.file)}</td><td class="num">${r.refs}</td><td class="num">${r.found}</td>
+      <td><span class="badge ${r.status === 'OK' ? 'ok' : r.status === 'MISSING' || r.status === 'ERROR' ? 'bad' : 'dim'}">${esc(r.status)}</span>
+      <div class="hint" style="margin:2px 0 0">${esc(r.detail)}</div></td></tr>`).join('');
+
+    $('scan-panel').hidden = false;
+    setStatus(missingTotal ? 'Check complete. Some samples were not located.' : 'Check complete. Ready to embed.',
+      missingTotal ? 'error' : 'done');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  } finally { $('progress').hidden = true; refresh(); }
+});
+
+/* ---------- embed ---------- */
+
+async function embedXml(xml, cache, counters) {
+  const names = new Set();
+  for (const src of collectRefs(xml)) {
+    if (src && !isFactory(src)) names.add(sampleNameOf(src));
+  }
+  for (const n of names) {
+    if (cache.has(n)) continue;
+    const getBytes = findSample(n);
+    if (!getBytes) { cache.set(n, null); continue; }
+    try {
+      const decoded = wavToSampleFrames(await getBytes());
+      cache.set(n, toBase64(decoded.frames));
+    } catch { cache.set(n, null); }
+  }
+
+  return xml.replace(TAG_RE, (whole, tag, before, src, after) => {
+    if (!src) { counters.empty++; return whole; }
+    if (isFactory(src)) { counters.factory++; return whole; }
+    const b64 = cache.get(sampleNameOf(src));
+    if (!b64) { counters.missing++; return whole; }
+    counters.embedded++;
+    const selfClosing = /\/\s*$/.test(after);
+    const attrs = `${before} ${after.replace(/\/\s*$/, '')}`
+      .replace(/\s*\bsampledata="[^"]*"/g, '').replace(/\s+/g, ' ').trim();
+    return `<${tag} ${attrs} sampledata="${xmlEscape(b64)}"${selfClosing ? '/' : ''}>`;
+  });
+}
+
+$('run-btn').addEventListener('click', async () => {
+  const outName = `${state.label.replace(/\.zip$/i, '')}-EMBEDDED`;
+  let dirHandle = null;
+
+  if (CAN_STREAM) {
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    } catch { setStatus('cancelled', ''); return; }
+  }
+
+  setStatus('embedding…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
+  $('progress').hidden = false;
+
+  const cache = new Map();
+  const counters = { embedded: 0, missing: 0, empty: 0, factory: 0 };
+  const chosen = new Set(targets().map((t) => t.name));
+  const records = [];
+  let written = 0, failed = 0, bytesOut = 0;
+
+  const writeOut = async (relPath, bytes) => {
+    bytesOut += bytes.length;
+    if (dirHandle) {
+      const parts = `${outName}/${relPath}`.split('/').filter(Boolean);
+      let dir = dirHandle;
+      for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
+      const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+      const w = await fh.createWritable();
+      await w.write(bytes); await w.close();
+    } else {
+      records.push(await makeRecord(`${outName}/${relPath}`, bytes));
+    }
+  };
+
+  try {
+    for (let i = 0; i < state.items.length; i++) {
+      const item = state.items[i];
+      if (item.isDir) continue;
+
+      try {
+        if (isProjectFile(item.name) && chosen.has(item.name)) {
+          const bytes = await item.getBytes();
+          const compressed = isCompressedName(item.name);
+          const xml = td.decode(compressed ? await decompressMmpz(bytes) : bytes);
+          const updated = await embedXml(xml, cache, counters);
+
+          // A node that kept src would make LMMS ignore the embedded audio.
+          if (/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(updated)) {
+            throw new Error('src left alongside sampledata');
+          }
+          const outBytes = te.encode(updated);
+          await writeOut(item.name, compressed ? await compressMmpz(outBytes) : outBytes);
+          written++;
+        } else {
+          // Everything else is copied through byte-for-byte.
+          await writeOut(item.name, await item.getBytes());
+        }
+      } catch (err) {
+        failed++;
+        console.error(item.name, err);
+      }
+
+      $('progress-bar').style.width = `${Math.round(((i + 1) / state.items.length) * 100)}%`;
+      if (i % 3 === 0) { setStatus(`embedding… ${i + 1} of ${state.items.length}`); await new Promise(r => setTimeout(r)); }
+    }
+
+    if (!dirHandle) {
+      setStatus('building archive…');
+      state.output = buildZip(records);
+      $('download-btn').hidden = false;
+      $('output-name').textContent = `${outName}.zip`;
+      $('result-hint').textContent = '';
+    } else {
+      $('download-btn').hidden = true;
+      $('output-name').textContent = `${outName}/  (written to the selected folder)`;
+      $('result-hint').textContent = '';
+    }
+
+    $('result-summary').innerHTML = [
+      stat(written, 'projects embedded', 'good'),
+      stat(counters.embedded, 'samples written in', 'accent'),
+      stat(counters.missing, 'missing', counters.missing ? 'bad' : ''),
+      stat(state.items.length - written, 'files copied through'),
+      stat(mb(bytesOut), 'total size'),
+    ].join('');
+    $('result-note').textContent = counters.missing
+      ? 'Some samples were not found'
+      : 'Source files not modified';
+    $('result-panel').hidden = false;
+    $('result-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    setStatus(failed || counters.missing ? 'Finished with errors. See the summary above.' : 'Done.',
+      failed || counters.missing ? 'error' : 'done');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  } finally { $('progress').hidden = true; refresh(); }
+});
+
+$('download-btn').addEventListener('click', () => {
+  if (!state.output) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(state.output);
+  a.download = $('output-name').textContent.trim();
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 15000);
+});
+
+refreshSamples();
+refresh();
+</script>
+</body>
+</html>

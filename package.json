@@ -7,6 +7,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
+    "start:bundler": "electron src/main/bundler-main.js",
     "test": "node --test \"tests/*.test.js\"",
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win"

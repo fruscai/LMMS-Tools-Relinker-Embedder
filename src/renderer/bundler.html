@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    />
+    <title>LMMS RelinkBundler</title>
+    <link rel="stylesheet" href="bundler.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span class="box"></span></div>
+          <div class="brand-text">
+            <h1>LMMS RelinkBundler</h1>
+            <p>Package projects so they play anywhere — no sample files needed</p>
+          </div>
+        </div>
+        <div id="lmms-pill" class="lmms-pill checking">
+          <span class="dot"></span><span id="lmms-text">checking LMMS…</span>
+        </div>
+      </header>
+
+      <div class="tool-note">
+        <strong>This is not the Relinker.</strong>
+        The Relinker only rewrites sample paths, and its projects still depend on
+        audio files sitting in the right folder. This tool runs LMMS to build a
+        <em>bundle</em> — a folder holding the project plus a copy of every sample
+        it uses, so it opens correctly on any machine, including a Linux one.
+      </div>
+
+      <!-- Step 1 : mode -->
+      <section class="step">
+        <div class="step-head"><span class="step-num">1</span><h2>Does the project open correctly right now?</h2></div>
+
+        <div class="mode-grid">
+          <button type="button" class="mode-card selected" data-mode="bundle">
+            <span class="mode-title">Yes — just bundle it</span>
+            <span class="mode-body">
+              LMMS opens the project and all samples load. Nothing needs fixing.
+            </span>
+            <span class="mode-out">output: <code>_BUNDLED</code></span>
+          </button>
+
+          <button type="button" class="mode-card" data-mode="relink+bundle">
+            <span class="mode-title">No — LMMS reports missing samples</span>
+            <span class="mode-body">
+              Fix the broken paths first, then bundle. Bundling alone cannot help:
+              it copies files from the paths in the project, so a broken path
+              copies nothing.
+            </span>
+            <span class="mode-out">output: <code>_RELINKED_BUNDLED</code></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 2 : source -->
+      <section class="step">
+        <div class="step-head"><span class="step-num">2</span><h2>Choose your projects</h2></div>
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-inner">
+            <div class="drop-icon" aria-hidden="true"><span class="folder"></span></div>
+            <p class="drop-title">Drop a project, folder, or ZIP here</p>
+            <p class="drop-sub">Every <code>.mmp</code> and <code>.mmpz</code> inside gets its own bundle</p>
+            <div class="button-row">
+              <button type="button" data-choose="folder">Browse folder</button>
+              <button type="button" data-choose="zip">Browse ZIP</button>
+              <button type="button" data-choose="file">Single project</button>
+            </div>
+          </div>
+        </div>
+        <div id="source-chip" class="source-chip" hidden>
+          <span class="chip-icon"></span>
+          <div class="chip-body"><span class="chip-label">Selected</span><code id="source-path"></code></div>
+          <button id="clear-source" type="button" class="ghost">Change</button>
+        </div>
+      </section>
+
+      <!-- Step 3 : paths (relink mode only) -->
+      <section class="step" id="path-step" hidden>
+        <div class="step-head"><span class="step-num">3</span><h2>Fix the broken paths</h2></div>
+        <div class="field-stack">
+          <label class="field">
+            <span class="field-label">Incorrect path <em>the broken folder LMMS reports</em></span>
+            <input id="old-path" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="C:\Users\OldUser\Desktop\Samples\Project Audio\" />
+          </label>
+          <div class="arrow-row"><span class="arrow"></span></div>
+          <label class="field">
+            <span class="field-label">Replacement path <em>where the samples are now</em></span>
+            <input id="new-path" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="/Users/you/Documents/lmms/samples/gig/" />
+          </label>
+        </div>
+        <p class="slash-note">
+          Slash direction is handled for you — LMMS stores Windows paths with forward
+          slashes, so a pasted <code>C:\Users\…</code> still matches.
+        </p>
+      </section>
+
+      <!-- Step 4 : options + actions -->
+      <section class="step">
+        <div class="step-head"><span class="step-num" id="run-step-num">3</span><h2>Check, then build</h2></div>
+
+        <div class="options">
+          <label class="opt">
+            <input id="opt-strip" type="checkbox" checked />
+            <span>Strip empty sample slots
+              <em>An instrument with no sample loaded makes LMMS refuse to bundle the whole
+              project. This removes only the empty reference — the instrument stays.</em>
+            </span>
+          </label>
+          <label class="opt">
+            <input id="opt-dedupe" type="checkbox" checked />
+            <span>Remove duplicate samples
+              <em>LMMS copies a sample once per use. A project using 3 samples 18 times ships
+              18 copies. This collapses identical files — typically 6x smaller.</em>
+            </span>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="check-btn" type="button" class="primary" disabled>Check</button>
+          <button id="run-btn" type="button" class="go" disabled>Build bundles</button>
+          <span id="status" class="status"></span>
+        </div>
+        <div id="progress" class="progress" hidden><div id="progress-bar"></div></div>
+      </section>
+
+      <!-- Check results -->
+      <section id="check-panel" class="panel" hidden>
+        <div class="panel-head"><h2>Check</h2><span class="panel-note">Nothing has been built yet</span></div>
+        <p id="check-headline" class="headline"></p>
+        <div id="check-summary" class="summary-grid"></div>
+        <div id="check-advice" class="advice" hidden></div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Project</th><th class="num">Samples</th><th>Status</th></tr></thead>
+          <tbody id="check-body"></tbody></table>
+        </div>
+      </section>
+
+      <!-- Result -->
+      <section id="result-panel" class="panel" hidden>
+        <div class="panel-head"><h2>Done</h2><span id="result-note" class="panel-note"></span></div>
+        <div id="result-summary" class="summary-grid"></div>
+        <div class="output-row">
+          <div class="output-body"><span class="chip-label">Saved to</span><code id="output-location"></code></div>
+          <button id="reveal-btn" type="button">Show in folder</button>
+        </div>
+        <p id="report-line" class="hint"></p>
+      </section>
+    </div>
+    <script src="bundler.js"></script>
+  </body>
+</html>
