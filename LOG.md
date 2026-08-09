@@ -2,125 +2,171 @@
 
 ## 08-09-2026
 
-Tools
+Sample Embedder
 
-- Built the **Sample Embedder** as one standalone HTML file. Drop a folder or ZIP, get a
-  `-EMBEDDED` folder back. Two modes: everything, or one final project. Every other file gets
-  copied straight through
-- Built the **Relinker + Embedder** as a second HTML file. Stage A relinks everything so it runs on
-  my machine, Stage B embeds one project to send to the grader
-- Neither one needs LMMS installed. Embedding is just data work — decompress, read the WAV, base64,
-  rewrite the XML, recompress — and browsers do all of that natively now. Bundling is the opposite,
-  it shells out to the LMMS binary, which is why that one has to stay a desktop app
-- Swapped the test fixtures. They were a real project of mine. Now they're a generated project that
-  LMMS itself compressed, so the `lmms -d` comparison and the byte-identity test still mean
-  something and my music isn't sitting in a public repo
+- The sample embedder builds upon the previous dependency issues which could not be solved by
+  replacement into the gig folder or by using bundle mode. LMMS `.mmpz` uses base64 for file
+  embedding and is typically used for smaller references, but it can be co-opted to carry the
+  audio data itself, which removes the external file dependency entirely rather than pointing it
+  somewhere else
+- Built it as a single standalone HTML file rather than another Electron app. Embedding is only
+  data work — decompressing the project, decoding the WAV into frames, base64, rewriting the XML
+  and recompressing — and browsers now do every one of those natively through `CompressionStream`
+  and `DecompressionStream`. Bundling is the opposite case, because it shells out to the LMMS
+  binary, which is why that one has to remain a desktop application
+- The scope choice matters for how it gets used. Embedding everything makes every snapshot and
+  autosave in the folder self-contained, which is what I want when the whole set gets submitted.
+  Embedding one project is for when the interims should stay as normal relinked projects and only
+  the final one needs to survive being sent elsewhere. Either way every other file in the folder is
+  copied through without being touched
 
-⚠️ The `usergig:` trap
+Relinker + Embedder
 
-- `path.basename("usergig:Snare Sounds.wav")` hands back the WHOLE string, prefix and all, because
-  there's no slash after the colon. So the lookup missed and
-  `Drumline_Orchestration_Final_V2` came out with **zero** samples embedded
-- The run reported 86 written, 0 failed. Looked like a clean success. The only thing that gave it
-  away was the `MISSING samples: 18` counter in the summary
-- Lesson: keep that counter loud. A tool that reports "0 failed" while shipping a broken final
-  project is worse than one that just crashes
+- Built a second HTML file that runs both stages in one pass, because relinking and embedding
+  answer different questions and I need both in the normal workflow. Stage A rewrites the paths so
+  the projects open on my own machine and I can actually work on them. Stage B takes one chosen
+  project and embeds it, which is the copy that goes out. The output folder is named for whichever
+  stages actually ran, so `-RELINKED-EMBEDDED` means both happened and I don't have to remember
 
-Also fixed
+⚠️ The `usergig:` prefix bug
 
-- A project with no samples at all legitimately has an empty resources folder. My validator was
-  calling that a failure. Only demand resources when the project actually asks for some
+- `path.basename("usergig:Snare Sounds.wav")` returns the entire string including the prefix,
+  because there is no slash after the colon for it to split on. The lookup was therefore searching
+  for a file literally named `usergig:Snare Sounds.wav`, never finding it, and leaving the
+  reference alone
+- The result was that `Drumline_Orchestration_Final_V2`, which is the one project that actually
+  matters, came out of the run with ZERO samples embedded while every other project embedded fine
+- The run reported 86 files written and 0 failed, so from the outside it looked like a complete
+  success. The only thing that caught it was the `MISSING samples: 18` counter in the summary,
+  which is the reason that counter exists at all. A tool that reports "0 failed" while shipping a
+  broken final project is worse than one that crashes, because you ship it
+
+Fixtures
+
+- Replaced the test fixtures before making the repo public. They were a real project of mine, which
+  is fine locally and not fine published. The replacement is a generated project with the same
+  structure and the music stripped out
+- The generated XML still gets compressed by LMMS itself rather than by our own code, because the
+  `lmms -d` comparison and the byte-identity test only mean something if the fixture is genuinely
+  LMMS output. A fixture I compressed myself would only be testing our code against itself
 
 ## 08-08-2026
 
-makebundle, and what the docs don't say
+makebundle
 
-- Built the bundle pipeline around `lmms makebundle`. Ran the real binary before writing anything,
-  which corrected three things I'd assumed:
-  - it's `lmms makebundle <in> [out]` — an ACTION, lowercase, not a `--makeBundle` flag
-  - `.mmpz` input works directly, no decompress step needed
-  - the output project is named after the **output argument**, not the source project
-- LMMS copies a sample once per REFERENCE, not per unique file. One project with 3 samples used 18
-  times shipped 18 copies. 4.5 MB of audio came out as a 29 MB bundle
-- Added a dedupe step that groups by SHA-256 and collapses the identical copies. Across 44 projects
-  that took 1,174 MB down to 182 MB
-- Dedupe stays INSIDE one bundle. No shared resources folder, no symlinks, or the snapshots stop
-  being independently playable, which was the whole point
+- Built the bundle pipeline around `lmms makebundle`, but ran the real binary first rather than
+  writing to the spec, which corrected three assumptions. It is `lmms makebundle <in> [out]`, an
+  action rather than a `--makeBundle` flag, and lowercase. It accepts `.mmpz` input directly so
+  there is no need to decompress to `.mmp` first. The project it writes is named after the output
+  argument rather than after the source project, which matters when you are scripting it and
+  looking for the file afterwards
+- LMMS copies a sample once per REFERENCE rather than once per unique file. A project using three
+  samples across eighteen instruments therefore ships eighteen separate copies, and 4.5 MB of audio
+  came out as a 29 MB bundle. Added a dedupe step that hashes the resources with SHA-256, groups by
+  content, keeps one copy per group and rewrites the references to point at it. Across all 44
+  projects that took 1,174 MB down to 182 MB
+- The dedupe deliberately stays inside a single bundle. Sharing one resources folder across all the
+  bundles would have taken it down to about 5 MB, but every interim snapshot then depends on that
+  shared folder existing, and the entire point was that each one plays independently
 
 Linux
 
-- macOS is case-insensitive, Linux isn't. A reference to `Snare.wav` when the file on disk is
-  `snare.wav` works fine on the machine that built it and plays nothing on the grader's
-- Wrote a normalise step for it, then broke a bundle on purpose by renaming a resource to
-  `snare sounds.WAV`. It got caught, corrected, re-audited clean, and still rendered
+- macOS is case-insensitive by default and Linux is not, so a reference to `Snare.wav` when the
+  file on disk is actually `snare.wav` loads perfectly on the machine that built the bundle and
+  produces nothing on the grader's. This is the kind of failure that never shows up locally
+- Wrote a normalisation pass for it that rewrites the reference to match the real filename rather
+  than renaming the file, since renaming could collide with another resource. Tested it by breaking
+  a bundle on purpose, renaming a resource to `snare sounds.WAV`, and confirming it was detected,
+  corrected, re-audited clean and still rendered
 
-⚠️ Two ways makebundle fails while exiting 0
+⚠️ Two ways makebundle fails while reporting success
 
-- **empty sample slot.** An `audiofileprocessor` with `src=""` (instrument loaded, no sample in it)
-  makes it print `QFile::copy: Empty or null file name`, write NO project file, and exit 0. Three
-  of my 44 snapshots hit this
-- **rebundling.** Run makebundle on something that already uses `local:` and you get an empty
-  resources folder, no project file, exit 0
-- Both look like success from the outside. Anything scripting makebundle has to check the output
-  exists instead of trusting the exit code
+- An `audiofileprocessor` with `src=""`, meaning an instrument that was added but never had a
+  sample loaded into it, makes makebundle print `QFile::copy: Empty or null file name`, write no
+  project file at all, and still exit 0. Three of the 44 snapshots had this
+- Running makebundle on a project that already uses `local:` references does the same thing, giving
+  an empty resources folder and no project file while exiting 0. So bundling always has to run from
+  the relinked source and never from an existing bundle
+- Both of these look identical to success from outside the process. Anything scripting makebundle
+  has to check that the output file exists rather than trusting the exit code
 
-BIG ONE: embedding
+BIG ONE: embedding instead of bundling
 
-- Bundles need `local:`, which needs LMMS 1.3+, and they need the folder kept intact. Neither is
-  guaranteed on a grader I don't control
-- Found `sampledata` in the LMMS source. It's a base64 slot the loader falls back to **when `src`
-  is absent**. Put the audio in there and there's no path to resolve at all
-- **`src` WINS over `sampledata`.** It has to be REMOVED, not blanked, or LMMS ignores the embedded
-  audio and reports a missing file
-- Proved it: rendered from `/` with no sample files anywhere on the machine, audio came out
-  byte-identical to the bundle version
-- Worried the sample rate would break it, since the base64 carries no rate metadata. Tested instead
-  of guessing — embedded and file-based renders are byte-identical at 44.1 kHz AND 48 kHz. Concern
-  was unfounded
-- Embedded all 44 snapshots plus the 42 `.mmpz.bak` autosaves. 1,445 samples in, 0 missing
+- Bundles depend on `local:`, which only exists from LMMS 1.3.0-alpha onward while 1.2.2 is still
+  the last stable release, and they depend on the folder structure surviving the trip. Neither of
+  those is something I can guarantee on a machine I don't control
+- Reading the LMMS source for `AudioFileProcessor` showed that the loader checks `src` first and
+  only falls back to a base64 `sampledata` attribute when `src` is absent. Putting the audio into
+  `sampledata` therefore leaves nothing to resolve at all, which sidesteps the version requirement,
+  the folder structure and the working directory in one move
+- **`src` wins over `sampledata`**, so the attribute has to be removed rather than blanked. If it
+  is left in place pointing at a file that doesn't exist, LMMS reports the missing file and ignores
+  the embedded audio completely, which is exactly the failure being fixed
+- Proved it by rendering from `/` with no sample files anywhere on the machine, and the audio came
+  out byte-identical to the bundle version
+- The sample rate looked like a problem, since the base64 carries no rate metadata and
+  `fromBase64` defaults to the engine's output rate. Tested it rather than assuming, and embedded
+  and file-based renders are byte-identical at both 44.1 kHz and 48 kHz, so the concern was
+  unfounded and no resampling was needed
+- Embedded all 44 snapshots along with the 42 `.mmpz.bak` autosaves, which came to 1,445 samples
+  embedded with none missing
 
-⚠️ Bare relative paths look like they work
+⚠️ Bare relative paths appear to work and do not
 
-- Tried `src="Snare Sounds.wav"` with the WAV sitting next to the project. Worked perfectly when I
-  ran LMMS from that folder. Ran it from `/` and got PURE SILENCE, peak 0
-- It resolves against the WORKING DIRECTORY, not the project file. `local:` is the only prefix
-  anchored to the project
-- Would have shipped this if I hadn't tested from a different folder
+- Tried `src="Snare Sounds.wav"` with the WAV sitting beside the project, which would have been the
+  simplest possible fix and needed no version support. It rendered perfectly with audio identical
+  to the bundle, so it looked like the answer
+- Then ran the same project from `/` instead of from its own folder and got complete silence, peak
+  amplitude 0, with LMMS reporting every sample missing. Relative paths resolve against the working
+  directory rather than against the project file, and only `local:` is anchored to the project
+- This would have shipped if the second render had been run from the same folder as the first
 
 ## 08-06-2026
 
 The format
 
-- `.mmpz` is Qt `qCompress`: 4-byte big-endian uncompressed length, then a plain zlib stream. Not
-  gzip, not a ZIP. Checked it on real files instead of taking anyone's word
-- Our decompression is SHA-256 identical to `lmms -d`. The CLI tacks on one trailing newline that
-  isn't part of the stored bytes
-- Our compression came out **byte-identical** to LMMS's own output on 12 real projects. Node's zlib
-  default matches Qt's `qCompress` default
+- `.mmpz` is Qt's `qCompress` container, which is a four-byte big-endian uncompressed length
+  followed by a plain zlib stream. It is not gzip and not a ZIP archive, and the four-byte prefix
+  is why treating it as either fails immediately. Confirmed on real project files rather than
+  taking the forum answers at face value
+- Our decompression is SHA-256 identical to what `lmms -d` produces, with the only difference being
+  a single trailing newline the CLI adds that is not part of the stored bytes
+- Our compression came out byte-identical to LMMS's own output across twelve real projects, because
+  Node's default zlib level matches the default that Qt's `qCompress` passes through. That is
+  stronger than needed, since the actual requirement is only that `qUncompress` returns the right
+  XML, but it is worth knowing
 
-BIG ONE: forward slashes
+BIG ONE: LMMS stores Windows paths with forward slashes
 
-- **LMMS stores Windows paths with FORWARD slashes.** A project that broke on
-  `C:\Users\...\Audio Files\` is sitting in the file as `C:/Users/.../Audio Files/`
-- So pasting the path straight out of the LMMS error dialog matches literally nothing. Which is the
-  exact thing this tool exists to do
-- Handled by matching both slash directions, on by default, with the matched form shown in the
-  preview so nothing happens invisibly
+- A project that broke on `C:\Users\...\Audio Files\` is stored in the XML as
+  `C:/Users/.../Audio Files/`, because Qt normalises the separators when the path is saved
+- This means pasting the broken path straight out of the LMMS error dialog, which is the obvious
+  thing any user would do, matches nothing at all. The tool would report zero occurrences on a
+  project that is full of the exact path that was pasted
+- Handled by matching both separator directions and writing the replacement back in whichever
+  direction the file actually uses, with the matched form shown in the preview so nothing happens
+  invisibly
 
 Build
 
-- Compression layer first, GUI last. 45 tests against real LMMS fixtures
-- Electron app, then a single-file HTML version. The HTML one is what actually gets used — no
-  install, works offline, nothing uploaded
-- Didn't call it done until a generated `.mmpz` opened in LMMS and rendered to a 44 MB WAV
+- Built the compression layer first and the interface last, on the basis that the format is the
+  part which can silently corrupt work while an interface bug is obvious. 45 tests, all against
+  real LMMS fixtures rather than XML written to match our own assumptions
+- Built the Electron app first and then a single-file HTML version, and the HTML one is what
+  actually gets used, since it needs no install, works offline and can be sent to someone as one
+  file
+- Did not treat it as finished until a generated `.mmpz` had been opened by LMMS and rendered to a
+  44 MB WAV, because everything up to that point was only testing our code against itself
 
 ⚠️ Traps
 
-- Nearly built this by parsing the XML into a DOM and writing it back. That quietly reformats
-  whitespace, reorders attributes and re-encodes entities across every project and you don't find
-  out for months. Text replacement only now, with a length-delta check that rejects the file if
+- Nearly built this by parsing the XML into a DOM, changing the paths and writing it back out,
+  which is the obvious approach. That would have reformatted whitespace, reordered attributes and
+  re-encoded entities across every project touched, and none of it would have been visible for
+  months. It is now a narrow text replacement with a length-delta check that rejects the file if
   anything other than the requested root moved
-- `[hidden]` in HTML loses to any class that sets `display`, so panels stayed on screen when they
-  should have been closed
-- Left the replacement path blank once and the scan happily previewed stripping the root off every
-  path. Both fields required now
+- `[hidden]` in HTML loses to any class that sets a `display` value, so panels that were supposed
+  to be closed stayed on screen until `[hidden]{display:none!important}` was added
+- Leaving the replacement path empty made the scan preview stripping the root off every path and
+  reducing them to bare filenames, which looked like a working preview. Both fields are required
+  now
