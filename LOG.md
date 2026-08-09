@@ -4,105 +4,123 @@
 
 Tools
 
-- Built the **Sample Embedder** as a standalone HTML file. Folder or ZIP in, `-EMBEDDED` out.
-  Two scopes: everything, or one final project. All other files copied through unchanged
-- Built the **Relinker + Embedder** as a second HTML file. Stage A relinks every project so it
-  runs on my own machine, Stage B embeds one chosen project to send to the grader. Output is
-  named `-RELINKED` or `-RELINKED-EMBEDDED` depending on what actually ran
-- Neither needs LMMS installed. Embedding is pure data work: decompress, decode WAV, base64,
-  rewrite XML, recompress. Browsers do all of it natively
-- Replaced the test fixtures. They used to be a real project of mine; now they are a synthetic
-  project that LMMS itself compressed, so the `lmms -d` and byte-identity tests stay honest
-  without publishing my music
+- Built the **Sample Embedder** as one standalone HTML file. Drop a folder or ZIP, get a
+  `-EMBEDDED` folder back. Two modes: everything, or one final project. Every other file gets
+  copied straight through
+- Built the **Relinker + Embedder** as a second HTML file. Stage A relinks everything so it runs on
+  my machine, Stage B embeds one project to send to the grader
+- Neither one needs LMMS installed. Embedding is just data work — decompress, read the WAV, base64,
+  rewrite the XML, recompress — and browsers do all of that natively now. Bundling is the opposite,
+  it shells out to the LMMS binary, which is why that one has to stay a desktop app
+- Swapped the test fixtures. They were a real project of mine. Now they're a generated project that
+  LMMS itself compressed, so the `lmms -d` comparison and the byte-identity test still mean
+  something and my music isn't sitting in a public repo
 
-Traps found
+⚠️ The `usergig:` trap
 
-- `path.basename("usergig:Snare Sounds.wav")` returns the whole string, prefix included, because
-  there is no slash after the colon. That silently left `Drumline_Orchestration_Final_V2` with
-  **zero** samples embedded while the run reported 86 written and 0 failed. The only reason I
-  caught it was the `MISSING samples: 18` line in the summary. Worth keeping that counter loud
-- A project with no samples at all legitimately produces an empty resources folder. My validator
-  was calling that a failure. Fixed: only demand resources when the project actually references some
+- `path.basename("usergig:Snare Sounds.wav")` hands back the WHOLE string, prefix and all, because
+  there's no slash after the colon. So the lookup missed and
+  `Drumline_Orchestration_Final_V2` came out with **zero** samples embedded
+- The run reported 86 written, 0 failed. Looked like a clean success. The only thing that gave it
+  away was the `MISSING samples: 18` counter in the summary
+- Lesson: keep that counter loud. A tool that reports "0 failed" while shipping a broken final
+  project is worse than one that just crashes
+
+Also fixed
+
+- A project with no samples at all legitimately has an empty resources folder. My validator was
+  calling that a failure. Only demand resources when the project actually asks for some
 
 ## 08-08-2026
 
-Bundling
+makebundle, and what the docs don't say
 
-- Built the bundle pipeline around `lmms makebundle`. Verified against the real binary, which
-  corrected three things in my original spec: the syntax is `lmms makebundle <in> [out]` (an
-  action, lowercase, not `--makeBundle`), `.mmpz` input works directly with no decompress step,
-  and the output project is named after the **output argument**, not the source project
-- LMMS copies a sample once per **reference**, not per unique file. One project with 3 samples used
-  18 times shipped 18 copies: 4.5 MB of audio became a 29 MB bundle. Added a dedupe step that
-  groups by SHA-256 content hash and collapses identical copies. Across 44 projects that took
-  1,174 MB down to 182 MB
-- Dedupe is strictly **within** one bundle. Never a shared resources folder, never symlinks, or the
-  snapshots stop being independently playable
-- Added a Linux normalisation step. macOS is case-insensitive and Linux is not, so a reference to
-  `Snare.wav` when the file is `snare.wav` works on the machine that built it and silently plays
-  nothing on the grader's. Tested by deliberately renaming a resource; it was detected, corrected,
-  re-audited clean, and still rendered
+- Built the bundle pipeline around `lmms makebundle`. Ran the real binary before writing anything,
+  which corrected three things I'd assumed:
+  - it's `lmms makebundle <in> [out]` — an ACTION, lowercase, not a `--makeBundle` flag
+  - `.mmpz` input works directly, no decompress step needed
+  - the output project is named after the **output argument**, not the source project
+- LMMS copies a sample once per REFERENCE, not per unique file. One project with 3 samples used 18
+  times shipped 18 copies. 4.5 MB of audio came out as a 29 MB bundle
+- Added a dedupe step that groups by SHA-256 and collapses the identical copies. Across 44 projects
+  that took 1,174 MB down to 182 MB
+- Dedupe stays INSIDE one bundle. No shared resources folder, no symlinks, or the snapshots stop
+  being independently playable, which was the whole point
 
-Two silent failures in LMMS, both exit 0
+Linux
 
-- **Empty sample slots.** An `audiofileprocessor` with `src=""` (an instrument with no sample
-  loaded) makes makebundle log `QFile::copy: Empty or null file name`, write no project file, and
-  exit 0. Three of my 44 snapshots hit this
-- **Rebundling.** Running makebundle on a project that already uses `local:` references produces an
-  empty resources folder, no project file, and exit 0. Always bundle from the relinked source,
-  never from a bundle
+- macOS is case-insensitive, Linux isn't. A reference to `Snare.wav` when the file on disk is
+  `snare.wav` works fine on the machine that built it and plays nothing on the grader's
+- Wrote a normalise step for it, then broke a bundle on purpose by renaming a resource to
+  `snare sounds.WAV`. It got caught, corrected, re-audited clean, and still rendered
 
-The thing that actually worked
+⚠️ Two ways makebundle fails while exiting 0
 
-- Bundles need `local:`, which needs LMMS 1.3+, and need the folder kept intact. Neither is
-  guaranteed on a grader. Found `sampledata` in the LMMS source: a base64 slot the loader falls
-  back to **when `src` is absent**. Embedding the audio there gives a single self-contained `.mmpz`
-  with no paths, no folder, and no version requirement
-- `src` WINS over `sampledata`. It has to be removed, not blanked, or the embedded audio is ignored
-- Proved it: rendered from `/` with no sample files anywhere on the machine, audio byte-identical
-  to the bundle version
-- Also tested the sample-rate worry and it was unfounded. Embedded and file-based renders are
-  byte-identical at both 44.1 kHz and 48 kHz
-- Embedded all 44 snapshots plus the 42 `.mmpz.bak` autosaves. 1,445 samples embedded, 0 missing
+- **empty sample slot.** An `audiofileprocessor` with `src=""` (instrument loaded, no sample in it)
+  makes it print `QFile::copy: Empty or null file name`, write NO project file, and exit 0. Three
+  of my 44 snapshots hit this
+- **rebundling.** Run makebundle on something that already uses `local:` and you get an empty
+  resources folder, no project file, exit 0
+- Both look like success from the outside. Anything scripting makebundle has to check the output
+  exists instead of trusting the exit code
 
-Bare relative paths are a trap
+BIG ONE: embedding
 
-- `src="Snare Sounds.wav"` with the WAV sitting next to the project worked perfectly when I ran
-  LMMS from that folder, and produced **pure silence** when run from `/`. It resolves against the
-  working directory, not the project file. `local:` is the only prefix anchored to the project
+- Bundles need `local:`, which needs LMMS 1.3+, and they need the folder kept intact. Neither is
+  guaranteed on a grader I don't control
+- Found `sampledata` in the LMMS source. It's a base64 slot the loader falls back to **when `src`
+  is absent**. Put the audio in there and there's no path to resolve at all
+- **`src` WINS over `sampledata`.** It has to be REMOVED, not blanked, or LMMS ignores the embedded
+  audio and reports a missing file
+- Proved it: rendered from `/` with no sample files anywhere on the machine, audio came out
+  byte-identical to the bundle version
+- Worried the sample rate would break it, since the base64 carries no rate metadata. Tested instead
+  of guessing — embedded and file-based renders are byte-identical at 44.1 kHz AND 48 kHz. Concern
+  was unfounded
+- Embedded all 44 snapshots plus the 42 `.mmpz.bak` autosaves. 1,445 samples in, 0 missing
+
+⚠️ Bare relative paths look like they work
+
+- Tried `src="Snare Sounds.wav"` with the WAV sitting next to the project. Worked perfectly when I
+  ran LMMS from that folder. Ran it from `/` and got PURE SILENCE, peak 0
+- It resolves against the WORKING DIRECTORY, not the project file. `local:` is the only prefix
+  anchored to the project
+- Would have shipped this if I hadn't tested from a different folder
 
 ## 08-06-2026
 
-Format research
+The format
 
-- Confirmed `.mmpz` is Qt `qCompress`: a 4-byte big-endian uncompressed length, then a plain zlib
-  stream. Not gzip, not ZIP. Verified on real files rather than assumed
-- Our decompression is SHA-256 identical to `lmms -d`. The CLI adds one trailing newline that is
-  not part of the stored bytes
-- Our compression is **byte-identical** to LMMS's own output on 12 real projects. Node's zlib
-  default matches Qt's `qCompress` default here
+- `.mmpz` is Qt `qCompress`: 4-byte big-endian uncompressed length, then a plain zlib stream. Not
+  gzip, not a ZIP. Checked it on real files instead of taking anyone's word
+- Our decompression is SHA-256 identical to `lmms -d`. The CLI tacks on one trailing newline that
+  isn't part of the stored bytes
+- Our compression came out **byte-identical** to LMMS's own output on 12 real projects. Node's zlib
+  default matches Qt's `qCompress` default
 
-The finding that mattered most
+BIG ONE: forward slashes
 
-- **LMMS stores Windows paths with forward slashes.** A project that broke on
-  `C:\Users\...\Audio Files\` is stored as `C:/Users/.../Audio Files/`. So pasting the path
-  straight out of LMMS's error dialog matches nothing. Handled by matching both slash directions,
-  on by default, with the matched form shown in the preview
+- **LMMS stores Windows paths with FORWARD slashes.** A project that broke on
+  `C:\Users\...\Audio Files\` is sitting in the file as `C:/Users/.../Audio Files/`
+- So pasting the path straight out of the LMMS error dialog matches literally nothing. Which is the
+  exact thing this tool exists to do
+- Handled by matching both slash directions, on by default, with the matched form shown in the
+  preview so nothing happens invisibly
 
 Build
 
-- Core modules first, GUI last, per the plan. 45 tests, real LMMS fixtures
-- Electron app, then a standalone single-file HTML version. The HTML one is what people actually
-  use: no install, works offline, nothing uploaded
-- Proved a generated `.mmpz` opens in LMMS by rendering it to a 44 MB WAV, not by assuming
+- Compression layer first, GUI last. 45 tests against real LMMS fixtures
+- Electron app, then a single-file HTML version. The HTML one is what actually gets used — no
+  install, works offline, nothing uploaded
+- Didn't call it done until a generated `.mmpz` opened in LMMS and rendered to a 44 MB WAV
 
-Traps found
+⚠️ Traps
 
-- Nearly built the tool by parsing the XML into a DOM and writing it back. That would have quietly
-  reformatted whitespace, reordered attributes and re-encoded entities across every project.
-  Narrow textual replacement only, with a length-delta check that rejects the file if anything
-  other than the requested root moved
-- `[hidden]` in HTML loses to any class that sets `display`, so panels stayed visible when they
+- Nearly built this by parsing the XML into a DOM and writing it back. That quietly reformats
+  whitespace, reorders attributes and re-encodes entities across every project and you don't find
+  out for months. Text replacement only now, with a length-delta check that rejects the file if
+  anything other than the requested root moved
+- `[hidden]` in HTML loses to any class that sets `display`, so panels stayed on screen when they
   should have been closed
-- Leaving the replacement path blank made the scan preview stripping the root off every path.
-  Both fields are required now
+- Left the replacement path blank once and the scan happily previewed stripping the root off every
+  path. Both fields required now

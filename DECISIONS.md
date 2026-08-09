@@ -2,100 +2,105 @@
 
 ## 08-09-2026 - Shipping shape
 
-Three separate tools, not one
+Three tools, kept separate
 
-- **Relinker** rewrites paths. **Embedder** writes audio into projects. **Relinker + Embedder**
-  does both in one pass. They stay separate because they answer different questions: relinking
-  fixes *my* machine, embedding makes a file that works on *someone else's*. Merging them into one
-  mode-switching tool made the choice harder to reason about, not easier
+- **Relinker** rewrites paths. **Embedder** writes audio into the project. **Relinker + Embedder**
+  does both in one pass. They stay separate because they answer different questions — relinking
+  fixes MY machine, embedding makes a file that works on someone ELSE'S. Tried thinking of it as
+  one tool with modes and it made the choice harder to reason about, not easier.
 
-Single-file HTML over Electron
+Single HTML file over Electron
 
-- The Electron build works, but it needs installing, and on macOS an unsigned app trips Gatekeeper
-  while Windows needs its own build and a signing certificate. A single HTML file is one download,
-  no install, works offline, and runs on Mac, Windows and Linux from the same file
-- The one thing HTML genuinely cannot do is bundling, because `makebundle` is the LMMS binary.
-  That is why the bundler stayed a desktop app and the embedder did not have to
+- The Electron build works fine, but it needs installing, and unsigned it trips Gatekeeper on macOS
+  and SmartScreen on Windows. Windows also needs its own build and a signing cert. One HTML file is
+  one download, no install, offline, and the same file runs on Mac, Windows and Linux.
+- The one thing HTML genuinely can't do is bundling, because `makebundle` IS the LMMS binary and no
+  web page can launch it. That's why the bundler stayed a desktop app and the embedder didn't have
+  to be one.
 
-Folder or ZIP only, no single-file input
+Folder or ZIP only, no single file input
 
-- Autosaves (`.mmpz.bak`) and `Files.txt` need to travel with the projects. Accepting a lone
-  `.mmpz` would quietly drop them
+- Autosaves (`.mmpz.bak`) and `Files.txt` have to travel with the projects. Accepting a lone
+  `.mmpz` would drop them without saying so.
 
-Fixtures are synthetic now
+Fixtures are generated now
 
-- The test fixtures were a real project of mine. For a public repo that publishes my music, so they
-  were replaced with a generated project. It is still compressed by LMMS itself, so the
-  `lmms -d` comparison and the byte-identity test keep their meaning
+- The test fixtures were a real project of mine, which is fine locally and not fine in a public
+  repo. Replaced with a generated project. Still compressed by LMMS itself, so the `lmms -d`
+  comparison and the byte-identity test keep their meaning — a fixture I compressed myself would
+  prove nothing about LMMS.
 
-## 08-08-2026 - Embedding over bundling
+## 08-08-2026 - Embedding instead of bundling
 
-The problem with every path-based approach
+Why path-based fixes were never going to work
 
-- The grading report was consistent across every criterion: the project "opens with error dialogs
-  into sampleless (0ms, empty display) instruments and can't play". LMMS found the sample
-  references in the XML and no audio behind them
-- Relinking cannot fix that. It points projects at a folder on *my* machine, which does not exist
-  on the grader's
-- Bundling is closer, but it needs `local:` (LMMS 1.3+, while 1.2.2 is still the last stable
-  release) and needs the folder structure preserved. Neither is guaranteed
+- The grading report said the same thing on every criterion: the project "opens with error dialogs
+  into sampleless (0ms, empty display) instruments and can't play." LMMS found the references in
+  the XML and no audio behind them.
+- Relinking can't fix that. It points projects at a folder on MY machine, which doesn't exist on
+  the grader's. Relinking solves my problem, not theirs.
+- Bundling gets closer but needs `local:` (LMMS 1.3.0-alpha+, while 1.2.2 is still the last stable
+  release) and needs the folder structure kept intact. Neither is guaranteed on a machine I don't
+  control.
 
 Embedding removes the dependency instead of redirecting it
 
-- LMMS's own loader falls back to a base64 `sampledata` attribute when `src` is absent. Writing the
-  audio there means there is no path to resolve, no folder to preserve, no version requirement, and
-  no working-directory sensitivity
-- Cost is size: audio is stored as raw float32, and each instrument carries its own copy, so a
-  project with 3 samples used 18 times is ~28 MB. Accepted deliberately, because correctness beat
-  size here
+- LMMS's own loader falls back to a base64 `sampledata` attribute when `src` is absent. Put the
+  audio there and there's no path to resolve, no folder to preserve, no version requirement, no
+  working-directory sensitivity.
+- The cost is size. Audio goes in as raw float32 and every instrument carries its own copy, so a
+  project with 3 samples used 18 times is about 28 MB. Took that deliberately. Correctness beat
+  size here and disk is cheap.
 
 Dedupe within a bundle, never across
 
-- Sharing one resources folder between bundles would cut 190 MB to 5 MB, and would break the
-  requirement that every interim snapshot plays independently. Not worth it
-- No symlinks either. They cannot hold repaired content, they break when a folder is moved or
-  zipped, and Windows needs elevated privileges to create them
+- Sharing one resources folder between all the bundles would take 190 MB down to about 5 MB. Not
+  doing it — every interim snapshot has to play on its own, and shared resources breaks that the
+  moment one folder gets moved.
+- No symlinks either. They can't hold repaired content, they break when a folder gets zipped or
+  moved, and Windows needs elevated privileges to make them.
 
 Verify before writing, always
 
 - `makebundle` exits 0 while producing nothing when a project has an empty sample slot or already
-  uses `local:`. A pipeline that trusts the exit code ships broken work
-- So: check that every reference resolves before bundling, and refuse the file rather than produce
-  a bundle that looks fine and plays silence. This gate caught genuinely missing samples twice
-  during development
+  uses `local:`. A pipeline that trusts the exit code ships broken work and says it succeeded.
+- So: check every reference resolves BEFORE bundling, and refuse the file rather than hand over
+  something that looks fine and plays silence. That gate caught genuinely missing samples twice
+  during development, once when I'd deleted the gig samples to test and forgotten.
 
 ## 08-06-2026 - The beginning
 
 Never re-serialise the XML
 
-- The obvious way to build this is to parse the project into a DOM, change the paths, and write it
-  back. That would silently reformat whitespace, reorder attributes and re-encode entities across
-  hundreds of projects, and I would not find out for months
-- So the project is treated as text and only the exact matched substring is replaced. A length-delta
-  check rejects the file if anything else moved. Verified: with sample paths masked out, the
-  original and relinked XML are byte-identical
+- The obvious way to build this is parse the project into a DOM, change the paths, write it back.
+  That reformats whitespace, reorders attributes and re-encodes entities across hundreds of
+  projects, and I wouldn't find out for months.
+- So the project gets treated as text and only the exact matched substring is replaced. A
+  length-delta check rejects the file if anything else moved. Verified it: with sample paths masked
+  out, original and relinked XML are byte-identical.
 
-Deterministic replacement only, no guessing
+Deterministic only, no guessing
 
-- No fuzzy matching, no searching the disk for similarly named audio, no inferring where a sample
-  "probably" lives. The user supplies the old root and the new root, and only that is replaced
-- LMMS already reports the broken path, so the information is available without guessing
+- No fuzzy matching, no searching the disk for similarly-named audio, no inferring where a sample
+  probably lives. I give it the old root and the new root and it replaces exactly that.
+- LMMS already reports the broken path, so the information is there without anyone guessing.
 
 Match both slash directions, on by default
 
-- LMMS stores Windows paths with forward slashes, so a pasted backslash path matches literally
-  nothing. Without this the tool fails at exactly the job it exists for
-- It stays a toggle rather than being hard-wired, because a backslash is a legal filename character
-  on macOS and Linux, so a strictly literal match is occasionally the right answer
+- LMMS stores Windows paths with forward slashes, so a pasted backslash path matches nothing at
+  all. Without this the tool fails at the exact job it exists for.
+- Kept it as a toggle instead of hard-wiring it, because a backslash is a legal filename character
+  on macOS and Linux, so a strictly literal match is occasionally the right answer.
 
 Non-destructive by default
 
-- Source files are only ever read. Output goes to a separate tree named for what happened to it:
-  `-RELINKED`, `-EMBEDDED`, `-RELINKED-EMBEDDED`. An existing result is never overwritten
-- Timestamps are preserved on copied files, so a bulk repair does not restamp a whole project
-  library with today's date and destroy date sorting
+- Source files only ever get read. Output goes to a separate tree named for what happened to it:
+  `-RELINKED`, `-EMBEDDED`, `-RELINKED-EMBEDDED`. An existing result never gets overwritten, it
+  gets a counter.
+- Timestamps preserved on copies, so a bulk repair doesn't restamp a whole project library with
+  today's date and wreck date sorting.
 
 Compression layer before the GUI
 
-- The format is the part that can silently corrupt work, so it was built and tested first, against
-  real LMMS files, and proven by opening a generated `.mmpz` in LMMS before any interface existed
+- The format is the part that can silently corrupt work, so it got built and tested first, against
+  real LMMS files, and proven by opening a generated `.mmpz` in LMMS before any interface existed.
