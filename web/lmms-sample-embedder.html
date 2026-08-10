@@ -6,19 +6,14 @@
 <title>LMMS Sample Embedder</title>
 <style>
 :root{
-  --bg:#14101a;--panel:#1c1726;--panel-2:#241d31;--raised:#2c2440;
-  --border:#3a2f52;--border-soft:#2f2743;
-  --text:#ece8f4;--text-dim:#b0a6c4;--text-faint:#7d7295;
-  --accent:#a97bf0;--accent-2:#c8a8ff;--ok:#4fc98a;--warn:#f0b45e;
-  --bad:#ef6b6b;--bad-dim:#42202b;--radius:14px;--radius-sm:9px;
+  --ok-dim:#24361f;--accent-dim:#2f4256;--bg:#1e2024;--panel:#26292e;--panel-2:#2d3137;--raised:#363a41;--border:#41464e;--border-soft:#343941;--text:#d8dce1;--text-dim:#9aa1aa;--text-faint:#6b737d;--accent:#8351d4;--accent-2:#a884e8;--ok:#3ecb52;--warn:#e0a33e;--bad:#d9534f;--bad-dim:#3a2626;--radius:14px;--radius-sm:9px;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
-  background:radial-gradient(1100px 600px at 12% -10%,#2a1c40 0,transparent 55%),
-             radial-gradient(900px 500px at 100% 0,#1e1733 0,transparent 50%),var(--bg);
-  background-attachment:fixed;color:var(--text);
+  background:var(--bg);
+  color:var(--text);
   font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
@@ -29,22 +24,22 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
   padding-bottom:20px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px}
 .brand-mark{width:42px;height:42px;border-radius:12px;
-  background:linear-gradient(145deg,#8b5fd6,#4b2f7a);border:1px solid #a97bf0;
-  display:grid;place-items:center;box-shadow:0 6px 18px rgba(169,123,240,.3);flex:none}
-.chip3{width:20px;height:15px;border:2.5px solid #efe6ff;border-radius:3px;position:relative}
+  background:linear-gradient(145deg,#7346c0,#3b2560);border:1px solid #8351d4;
+  display:grid;place-items:center;box-shadow:0 6px 18px rgba(131,81,212,.3);flex:none}
+.chip3{width:20px;height:15px;border:2.5px solid #e8ddf7;border-radius:3px;position:relative}
 .chip3::before,.chip3::after{content:"";position:absolute;top:3px;bottom:3px;width:2.5px;
-  background:#efe6ff}
+  background:#e8ddf7}
 .chip3::before{left:-5px}.chip3::after{right:-5px}
 .brand-text h1{margin:0;font-size:19px;font-weight:650;letter-spacing:-.2px}
 .brand-text p{margin:2px 0 0;color:var(--text-dim);font-size:13px}
 .privacy-pill{display:flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
-  background:rgba(79,201,138,.09);border:1px solid rgba(79,201,138,.28);
-  color:#7fdcb2;font-size:12.5px;white-space:nowrap}
+  background:rgba(62,203,82,.09);border:1px solid rgba(62,203,82,.28);
+  color:#8fdc9a;font-size:12.5px;white-space:nowrap}
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
 .tool-note{padding:13px 16px;border-radius:var(--radius-sm);
-  background:rgba(169,123,240,.08);border:1px solid rgba(169,123,240,.28);
+  background:rgba(131,81,212,.08);border:1px solid rgba(131,81,212,.28);
   color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:26px}
 .tool-note strong{color:var(--accent-2)}
 
@@ -58,12 +53,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .dropzone{border:1.5px dashed var(--border);border-radius:var(--radius);
   background:linear-gradient(180deg,rgba(36,29,49,.55),rgba(28,23,38,.55));
   transition:border-color .18s,background .18s}
-.dropzone.dragging{border-color:var(--accent);background:rgba(169,123,240,.12)}
+.dropzone.dragging{border-color:var(--accent);background:rgba(131,81,212,.12)}
 .dropzone-inner{padding:32px 22px 28px;text-align:center}
 .folder{display:inline-block;width:46px;height:34px;border-radius:5px 8px 8px 8px;
-  background:linear-gradient(160deg,#463a63,#2e2743);border:1px solid #5a4a80;position:relative}
+  background:linear-gradient(160deg,#3f3a4a,#332e3d);border:1px solid #544a68;position:relative}
 .folder::before{content:"";position:absolute;top:-6px;left:0;width:19px;height:7px;
-  border-radius:4px 4px 0 0;background:#4d3f6e;border:1px solid #5a4a80;border-bottom:none}
+  border-radius:4px 4px 0 0;background:#493f5e;border:1px solid #544a68;border-bottom:none}
 .drop-icon{margin-bottom:13px}
 .drop-title{margin:0;font-size:16px;font-weight:600}
 .drop-sub{margin:6px 0 16px;color:var(--text-faint);font-size:12.5px}
@@ -84,13 +79,13 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
   border-radius:var(--radius);background:var(--panel);border:1.5px solid var(--border);
   color:var(--text);cursor:pointer;font-family:inherit;
   transition:border-color .15s,background .15s}
-.mode-card:hover{border-color:#5a4a80;background:var(--panel-2)}
-.mode-card.selected{border-color:var(--accent);background:rgba(169,123,240,.1)}
+.mode-card:hover{border-color:#544a68;background:var(--panel-2)}
+.mode-card.selected{border-color:var(--accent);background:rgba(131,81,212,.1)}
 .mode-title{font-size:14px;font-weight:650}
 .mode-card.selected .mode-title{color:var(--accent-2)}
 .mode-body{font-size:12.5px;color:var(--text-faint);line-height:1.55}
 .pick-row{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-select{background:#120f18;color:var(--text);border:1px solid var(--border);
+select{background:#17191c;color:var(--text);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 11px;font-family:ui-monospace,Menlo,monospace;
   font-size:12.5px;max-width:100%}
 select:focus{outline:none;border-color:var(--accent)}
@@ -104,13 +99,13 @@ select:focus{outline:none;border-color:var(--accent)}
 button{background:var(--raised);color:var(--text);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;
   font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s,transform .08s}
-button:hover:not(:disabled){border-color:#6b58a0;background:#332a49}
+button:hover:not(:disabled){border-color:#6a5a8c;background:#37323f}
 button:active:not(:disabled){transform:translateY(1px)}
 button:disabled{opacity:.4;cursor:not-allowed}
-button.primary{background:linear-gradient(180deg,#a97bf0,#7d51c9);border-color:#a97bf0;
-  color:#140d21;font-weight:650;min-width:100px}
-button.go{background:linear-gradient(180deg,#4fc98a,#2f9f68);border-color:#4fc98a;
-  color:#04140c;font-weight:650;min-width:130px}
+button.primary{background:linear-gradient(180deg,#8351d4,#6a41ad);border-color:#8351d4;
+  color:#150e22;font-weight:650;min-width:100px}
+button.go{background:linear-gradient(180deg,#3ecb52,#2fa843);border-color:#3ecb52;
+  color:#0d1f10;font-weight:650;min-width:130px}
 button.ghost{background:transparent;color:var(--text-dim);padding:6px 12px;font-size:12px}
 
 .actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -140,8 +135,8 @@ button.ghost{background:transparent;color:var(--text-dim);padding:6px 12px;font-
 .stat.accent .value{color:var(--accent-2)}
 .advice{padding:12px 15px;border-radius:var(--radius-sm);margin-bottom:15px;
   font-size:13px;line-height:1.6}
-.advice.bad{background:rgba(239,107,107,.09);border:1px solid rgba(239,107,107,.3);color:#ffb3b3}
-.advice.good{background:rgba(79,201,138,.08);border:1px solid rgba(79,201,138,.28);color:#9de6c0}
+.advice.bad{background:rgba(239,107,107,.09);border:1px solid rgba(239,107,107,.3);color:#e79a97}
+.advice.good{background:rgba(62,203,82,.08);border:1px solid rgba(62,203,82,.28);color:#a5e0ae}
 .advice strong{color:#fff}
 
 .table-wrap{max-height:300px;overflow:auto;border:1px solid var(--border-soft);
@@ -155,8 +150,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 td.file{white-space:normal;word-break:break-all;
   font-family:ui-monospace,Menlo,monospace;color:var(--text-dim)}
 .badge{padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
-.badge.ok{background:rgba(79,201,138,.16);color:#7fdcb2}
-.badge.bad{background:var(--bad-dim);color:#ff9d9d}
+.badge.ok{background:rgba(62,203,82,.16);color:#8fdc9a}
+.badge.bad{background:var(--bad-dim);color:#e79a97}
 .badge.dim{background:var(--raised);color:var(--text-faint)}
 
 .output-row{display:flex;gap:14px;align-items:center;justify-content:space-between;
@@ -171,10 +166,10 @@ td.file{white-space:normal;word-break:break-all;
 .footer strong{color:var(--text-dim)}
 .footer em{color:var(--accent-2);font-style:normal}
 .unsupported{padding:14px 16px;border-radius:var(--radius-sm);background:var(--bad-dim);
-  border:1px solid var(--bad);color:#ffc3c3;margin-bottom:20px}
+  border:1px solid var(--bad);color:#e79a97;margin-bottom:20px}
 ::-webkit-scrollbar{width:11px;height:11px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#3a2f52;border-radius:99px;border:3px solid var(--panel)}
+::-webkit-scrollbar-thumb{background:#3f3a4a;border-radius:99px;border:3px solid var(--panel)}
 </style>
 </head>
 <body>
@@ -359,49 +354,35 @@ async function compressMmpz(payload) {
 
 /* ---------- WAV -> SampleFrame array ---------- */
 
-function wavToSampleFrames(bytes) {
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const tag = (o) => String.fromCharCode(bytes[o], bytes[o+1], bytes[o+2], bytes[o+3]);
-  if (bytes.length < 12 || tag(0) !== 'RIFF') throw new Error('not a RIFF/WAVE file');
+/**
+ * Decode any audio file the browser can read into LMMS SampleFrame layout:
+ * interleaved stereo float32.
+ *
+ * decodeAudioData handles WAV, MP3, OGG, FLAC, AIFF and AAC, and resamples to
+ * the context's rate. The context is created at 44100 because embedded audio
+ * carries no sample rate of its own and LMMS assumes it is already at the
+ * engine rate, which defaults to 44100. Feeding it 48kHz frames makes the
+ * project play at the wrong speed. See DECISIONS.md.
+ */
+const TARGET_RATE = 44100;
 
-  let fmt = null, data = null, off = 12;
-  while (off + 8 <= bytes.length) {
-    const id = tag(off);
-    const size = dv.getUint32(off + 4, true);
-    if (id === 'fmt ' && size >= 16) {
-      fmt = { audioFormat: dv.getUint16(off+8, true), channels: dv.getUint16(off+10, true),
-              sampleRate: dv.getUint32(off+12, true), bits: dv.getUint16(off+22, true) };
-    } else if (id === 'data') {
-      data = bytes.subarray(off + 8, Math.min(off + 8 + size, bytes.length));
-    }
-    off += 8 + size + (size % 2);
+async function decodeToFrames(bytes) {
+  const ctx = new OfflineAudioContext(2, 1, TARGET_RATE);
+  // decodeAudioData needs its own ArrayBuffer, so hand it a copy.
+  const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const buf = await ctx.decodeAudioData(copy);
+
+  const n = buf.length;
+  const left = buf.getChannelData(0);
+  const right = buf.numberOfChannels > 1 ? buf.getChannelData(1) : left;
+
+  const out = new Uint8Array(n * 8);
+  const dv = new DataView(out.buffer);
+  for (let i = 0; i < n; i++) {
+    dv.setFloat32(i * 8, left[i], true);
+    dv.setFloat32(i * 8 + 4, right[i], true);
   }
-  if (!fmt) throw new Error('missing fmt chunk');
-  if (!data) throw new Error('missing data chunk');
-  if (fmt.audioFormat !== 1 && fmt.audioFormat !== 3) throw new Error(`unsupported encoding ${fmt.audioFormat}`);
-
-  const bps = fmt.bits / 8, stride = bps * fmt.channels;
-  const frames = Math.floor(data.length / stride);
-  const out = new Uint8Array(frames * 8);
-  const ov = new DataView(out.buffer);
-  const dd = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
-  const read = (p) => {
-    switch (fmt.bits) {
-      case 8: return (data[p] - 128) / 128;
-      case 16: return dd.getInt16(p, true) / 32768;
-      case 24: { const v = data[p] | (data[p+1] << 8) | (data[p+2] << 16);
-                 return ((v & 0x800000) ? v - 0x1000000 : v) / 8388608; }
-      case 32: return fmt.audioFormat === 3 ? dd.getFloat32(p, true) : dd.getInt32(p, true) / 2147483648;
-      default: throw new Error(`unsupported bit depth ${fmt.bits}`);
-    }
-  };
-  for (let i = 0; i < frames; i++) {
-    const b = i * stride, l = read(b);
-    ov.setFloat32(i * 8, l, true);
-    ov.setFloat32(i * 8 + 4, fmt.channels > 1 ? read(b + bps) : l, true);
-  }
-  return { frames: out, info: fmt, frameCount: frames };
+  return { frames: out, frameCount: n, rate: buf.sampleRate, channels: buf.numberOfChannels };
 }
 
 /** Chunked base64 — avoids blowing the argument limit on multi-MB buffers. */
@@ -524,6 +505,55 @@ function collectRefs(xml) {
     if (m) refs.push(m[1]);
   }
   return refs;
+}
+
+
+/* ---------- LMMS 1.2 compatibility ---------- */
+
+// Elements that only exist from 1.3 onward. If a project genuinely contains
+// these, no amount of header rewriting makes 1.2 able to open it.
+const LMMS13_ONLY = ['midiclip', 'automationclip', 'mixer', 'mixerchannel', 'sampleclip'];
+
+/** What, if anything, stops this project loading cleanly in LMMS 1.2. */
+function inspectCompat(xml) {
+  const blockers = LMMS13_ONLY.filter((t) => new RegExp('<' + t + '\\b').test(xml));
+  const nodes = xml.match(/<midicontrollers\b[^>]*>/g) || [];
+  // Only safe to drop when every CC value is zero, otherwise it carries real
+  // MIDI assignments.
+  const empty = nodes.filter((n) => [...n.matchAll(/="([^"]*)"/g)].every((m) => m[1] === '0'));
+  const header = (xml.match(/<lmms-project[^>]*>/) || [''])[0];
+  return {
+    blockers,
+    midiControllers: nodes.length,
+    removable: empty.length,
+    claims13: /creatorversion="1\.3/.test(header),
+  };
+}
+
+/**
+ * Remove the 1.3-only bits that stop 1.2 opening a project cleanly.
+ * The header is only reverted when the body carries no 1.3-only elements,
+ * because relabelling a genuinely 1.3 project would make it fail worse.
+ */
+function makeCompat12(xml) {
+  const before = inspectCompat(xml);
+  let out = xml;
+
+  if (before.removable === before.midiControllers && before.midiControllers > 0) {
+    out = out.replace(/\s*<midicontrollers\b[^>]*\/>/g, '')
+             .replace(/\s*<midicontrollers\b[^>]*>[\s\S]*?<\/midicontrollers>/g, '');
+  }
+
+  let headerChanged = false;
+  if (before.blockers.length === 0 && before.claims13) {
+    out = out.replace(/(<lmms-project[^>]*)>/, (m, head) => {
+      headerChanged = true;
+      return head.replace(/creatorversion="[^"]*"/, 'creatorversion="1.2.2"')
+                 .replace(/\bversion="[^"]*"/, 'version="1.0"') + '>';
+    });
+  }
+
+  return { xml: out, removed: before.removable, headerChanged, blockers: before.blockers };
 }
 
 /* ---------- app state ---------- */
@@ -689,6 +719,8 @@ $('scan-btn').addEventListener('click', async () => {
   const rows = [];
   let refs = 0, embeddable = 0, missingTotal = 0, factoryTotal = 0, emptyTotal = 0;
   const missingNames = new Set();
+  const blockers13 = new Set();
+  let ccTotal = 0;
 
   try {
     const list = targets();
@@ -705,6 +737,10 @@ $('scan-btn').addEventListener('click', async () => {
           const n = sampleNameOf(src);
           if (findSample(n)) found++; else { missing++; missingNames.add(n); }
         }
+        const compat = inspectCompat(xml);
+        if (compat.blockers.length) blockers13.add(compat.blockers.join(', '));
+        ccTotal += compat.removable;
+
         row.refs = found + missing + factory;
         row.found = found;
         refs += row.refs; embeddable += found; missingTotal += missing;
@@ -741,9 +777,15 @@ $('scan-btn').addEventListener('click', async () => {
         `<code>${esc([...missingNames].slice(0,6).join(', '))}</code>` +
         `${missingNames.size > 6 ? ', and others' : ''}. Add that folder in step 2.`;
       advice.hidden = false;
+    } else if (blockers13.size) {
+      advice.className = 'advice bad';
+      advice.innerHTML = 'All samples found. <strong>Note:</strong> uses LMMS 1.3 features ' +
+        `(<code>${esc([...blockers13].join(', '))}</code>) that LMMS 1.2 cannot open at all.`;
+      advice.hidden = false;
     } else if (embeddable) {
       advice.className = 'advice good';
-      advice.innerHTML = 'All samples found.';
+      advice.innerHTML = 'All samples found.' +
+        (ccTotal ? ` Will also clear ${ccTotal} <code>midicontrollers</code> node(s) so it opens cleanly in LMMS 1.2.` : '');
       advice.hidden = false;
     } else advice.hidden = true;
 
@@ -772,8 +814,7 @@ async function embedXml(xml, cache, counters) {
     const getBytes = findSample(n);
     if (!getBytes) { cache.set(n, null); continue; }
     try {
-      const decoded = wavToSampleFrames(await getBytes());
-      cache.set(n, toBase64(decoded.frames));
+      cache.set(n, toBase64((await decodeToFrames(await getBytes())).frames));
     } catch { cache.set(n, null); }
   }
 
@@ -785,8 +826,12 @@ async function embedXml(xml, cache, counters) {
     counters.embedded++;
     const selfClosing = /\/\s*$/.test(after);
     const attrs = `${before} ${after.replace(/\/\s*$/, '')}`
-      .replace(/\s*\bsampledata="[^"]*"/g, '').replace(/\s+/g, ' ').trim();
-    return `<${tag} ${attrs} sampledata="${xmlEscape(b64)}"${selfClosing ? '/' : ''}>`;
+      .replace(/\s*\b(sampledata|srcdata)="[^"]*"/g, '').replace(/\s+/g, ' ').trim();
+    // LMMS 1.2 checks "sampledata" but reads "srcdata" (bug in stable-1.2), so
+    // write both. 1.3 reads sampledata and ignores srcdata. Measured: with
+    // sampledata alone, 1.2.2 renders silence.
+    const payload = `sampledata="${xmlEscape(b64)}" srcdata="${xmlEscape(b64)}"`;
+    return `<${tag} ${attrs} ${payload}${selfClosing ? '/' : ''}>`;
   });
 }
 
@@ -804,7 +849,7 @@ $('run-btn').addEventListener('click', async () => {
   $('progress').hidden = false;
 
   const cache = new Map();
-  const counters = { embedded: 0, missing: 0, empty: 0, factory: 0 };
+  const counters = { embedded: 0, missing: 0, empty: 0, factory: 0, ccRemoved: 0, relabelled: 0, blocked13: 0 };
   const chosen = new Set(targets().map((t) => t.name));
   const records = [];
   let written = 0, failed = 0, bytesOut = 0;
@@ -833,12 +878,20 @@ $('run-btn').addEventListener('click', async () => {
           const bytes = await item.getBytes();
           const compressed = isCompressedName(item.name);
           const xml = td.decode(compressed ? await decompressMmpz(bytes) : bytes);
-          const updated = await embedXml(xml, cache, counters);
+          let updated = await embedXml(xml, cache, counters);
 
           // A node that kept src would make LMMS ignore the embedded audio.
           if (/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(updated)) {
             throw new Error('src left alongside sampledata');
           }
+
+          // Always make the result openable in LMMS 1.2 where that is possible.
+          const compat = makeCompat12(updated);
+          updated = compat.xml;
+          counters.ccRemoved += compat.removed;
+          if (compat.headerChanged) counters.relabelled += 1;
+          if (compat.blockers.length) counters.blocked13 += 1;
+
           const outBytes = te.encode(updated);
           await writeOut(item.name, compressed ? await compressMmpz(outBytes) : outBytes);
           written++;
@@ -872,6 +925,7 @@ $('run-btn').addEventListener('click', async () => {
       stat(counters.embedded, 'samples written in', 'accent'),
       stat(counters.missing, 'missing', counters.missing ? 'bad' : ''),
       stat(state.items.length - written, 'files copied through'),
+      ...(counters.ccRemoved ? [stat(counters.ccRemoved, 'LMMS 1.2 fixes', 'good')] : []),
       stat(mb(bytesOut), 'total size'),
     ].join('');
     $('result-note').textContent = counters.missing

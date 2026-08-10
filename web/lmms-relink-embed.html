@@ -6,20 +6,14 @@
 <title>LMMS Relinker + Embedder</title>
 <style>
 :root{
-  --bg:#0f1420;--panel:#161d2c;--panel-2:#1d2637;--raised:#242f45;
-  --border:#2f3d57;--border-soft:#27334a;
-  --text:#e8edf6;--text-dim:#a6b2c8;--text-faint:#71809a;
-  --blue:#6aa8ff;--blue-2:#9cc6ff;--violet:#a97bf0;--violet-2:#c8a8ff;
-  --ok:#4fc98a;--warn:#f0b45e;--bad:#ef6b6b;--bad-dim:#3f2028;
-  --radius:14px;--radius-sm:9px;
+  --ok-dim:#24361f;--accent-dim:#2f4256;--bg:#1e2024;--panel:#26292e;--panel-2:#2d3137;--raised:#363a41;--border:#41464e;--border-soft:#343941;--text:#d8dce1;--text-dim:#9aa1aa;--text-faint:#6b737d;--blue:#4a90d9;--blue-2:#7db6ec;--violet:#8351d4;--violet-2:#a884e8;--ok:#3ecb52;--warn:#e0a33e;--bad:#d9534f;--bad-dim:#3a2626;--radius:14px;--radius-sm:9px;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
-  background:radial-gradient(1100px 600px at 12% -10%,#1b2740 0,transparent 55%),
-             radial-gradient(900px 500px at 100% 0,#241d3a 0,transparent 50%),var(--bg);
-  background-attachment:fixed;color:var(--text);
+  background:var(--bg);
+  color:var(--text);
   font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
@@ -30,28 +24,28 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
   padding-bottom:20px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px}
 .brand-mark{width:42px;height:42px;border-radius:12px;
-  background:linear-gradient(145deg,#4a7fd4,#7d51c9);border:1px solid #7fa8f0;
-  display:grid;place-items:center;box-shadow:0 6px 18px rgba(106,168,255,.25);flex:none}
+  background:linear-gradient(145deg,#3a7bc0,#6a41ad);border:1px solid #7db6ec;
+  display:grid;place-items:center;box-shadow:0 6px 18px rgba(74,144,217,.25);flex:none}
 .mark-link,.mark-link::after{display:block;width:11px;height:17px;
-  border:2.5px solid #e6efff;border-radius:6px}
+  border:2.5px solid #e2ecf7;border-radius:6px}
 .mark-link{transform:rotate(-38deg) translateX(-3px);position:relative}
 .mark-link::after{content:"";position:absolute;left:5px;top:5px}
 .brand-text h1{margin:0;font-size:19px;font-weight:650;letter-spacing:-.2px}
 .brand-text p{margin:2px 0 0;color:var(--text-dim);font-size:13px}
 .privacy-pill{display:flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
-  background:rgba(79,201,138,.09);border:1px solid rgba(79,201,138,.28);
-  color:#7fdcb2;font-size:12.5px;white-space:nowrap}
+  background:rgba(62,203,82,.09);border:1px solid rgba(62,203,82,.28);
+  color:#8fdc9a;font-size:12.5px;white-space:nowrap}
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
 .stage{border-left:2px solid var(--border);padding-left:18px;margin-bottom:30px}
-.stage.violet{border-left-color:rgba(169,123,240,.55)}
+.stage.violet{border-left-color:rgba(131,81,212,.55)}
 .stage-title{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .stage-title h2{margin:0;font-size:15px;font-weight:650}
 .stage-tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;padding:3px 8px;
   border-radius:5px;font-weight:700}
-.stage-tag.a{background:rgba(106,168,255,.16);color:var(--blue-2)}
-.stage-tag.b{background:rgba(169,123,240,.16);color:var(--violet-2)}
+.stage-tag.a{background:rgba(74,144,217,.16);color:var(--blue-2)}
+.stage-tag.b{background:rgba(131,81,212,.16);color:var(--violet-2)}
 .stage-sub{margin:0 0 16px;color:var(--text-faint);font-size:12.5px}
 
 .step{margin-bottom:20px}
@@ -64,12 +58,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .dropzone{border:1.5px dashed var(--border);border-radius:var(--radius);
   background:linear-gradient(180deg,rgba(29,38,55,.55),rgba(22,29,44,.55));
   transition:border-color .18s,background .18s}
-.dropzone.dragging{border-color:var(--blue);background:rgba(106,168,255,.1)}
+.dropzone.dragging{border-color:var(--blue);background:rgba(74,144,217,.1)}
 .dropzone-inner{padding:30px 22px 26px;text-align:center}
 .folder{display:inline-block;width:46px;height:34px;border-radius:5px 8px 8px 8px;
-  background:linear-gradient(160deg,#354866,#232f45);border:1px solid #44598080;position:relative}
+  background:linear-gradient(160deg,#3a3e45,#2a2e34);border:1px solid #4a4f5780;position:relative}
 .folder::before{content:"";position:absolute;top:-6px;left:0;width:19px;height:7px;
-  border-radius:4px 4px 0 0;background:#3b5075;border:1px solid #44598080;border-bottom:none}
+  border-radius:4px 4px 0 0;background:#43484f;border:1px solid #4a4f5780;border-bottom:none}
 .drop-icon{margin-bottom:12px}
 .drop-title{margin:0;font-size:15.5px;font-weight:600}
 .drop-sub{margin:6px 0 15px;color:var(--text-faint);font-size:12.5px}
@@ -90,10 +84,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .field-label em{font-style:normal;font-weight:400;color:var(--text-faint);
   margin-left:7px;font-size:12px}
 input[type=text]{width:100%;padding:11px 13px;border-radius:var(--radius-sm);
-  border:1px solid var(--border);background:#0b1018;color:var(--text);
+  border:1px solid var(--border);background:#17191c;color:var(--text);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
-input[type=text]::placeholder{color:#48566e}
-input[type=text]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(106,168,255,.14)}
+input[type=text]::placeholder{color:#5a6068}
+input[type=text]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(74,144,217,.14)}
 .arrow-row{display:flex;justify-content:center;padding:10px 0 8px}
 .arrow{width:9px;height:9px;border-right:2px solid var(--text-faint);
   border-bottom:2px solid var(--text-faint);transform:rotate(45deg)}
@@ -102,14 +96,14 @@ input[type=text]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3p
   color:var(--text-faint);font-size:12.5px}
 
 .live-example{margin-top:12px;padding:12px 14px;border-radius:var(--radius-sm);
-  background:rgba(106,168,255,.055);border:1px solid rgba(106,168,255,.19)}
+  background:rgba(74,144,217,.055);border:1px solid rgba(74,144,217,.19)}
 .example-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;
   color:var(--text-faint);margin-bottom:8px}
 .ex-line{display:flex;gap:11px;align-items:baseline;margin-bottom:5px}
 .ex-tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;
   border-radius:5px;flex:none;font-weight:600}
-.ex-tag.old{background:var(--bad-dim);color:#ff9d9d}
-.ex-tag.new{background:rgba(79,201,138,.16);color:#74e0ae}
+.ex-tag.old{background:var(--bad-dim);color:#e79a97}
+.ex-tag.new{background:rgba(62,203,82,.16);color:#8fdc9a}
 .ex-line code{word-break:break-all;color:var(--text-dim)}
 
 .toggle-row{display:flex;gap:11px;align-items:flex-start;cursor:pointer;margin-bottom:14px}
@@ -118,7 +112,7 @@ input[type=text]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3p
 .toggle-row em{display:block;font-style:normal;font-weight:400;color:var(--text-faint);
   font-size:12px;margin-top:3px}
 .pick-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-select{background:#0b1018;color:var(--text);border:1px solid var(--border);
+select{background:#17191c;color:var(--text);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 11px;font-family:ui-monospace,Menlo,monospace;
   font-size:12.5px;max-width:100%}
 select:focus{outline:none;border-color:var(--violet)}
@@ -129,13 +123,13 @@ select:focus{outline:none;border-color:var(--violet)}
 button{background:var(--raised);color:var(--text);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;
   font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s,transform .08s}
-button:hover:not(:disabled){border-color:#4a5f85;background:#2b3852}
+button:hover:not(:disabled){border-color:#4d535c;background:#31353c}
 button:active:not(:disabled){transform:translateY(1px)}
 button:disabled{opacity:.4;cursor:not-allowed}
-button.primary{background:linear-gradient(180deg,#6aa8ff,#4a86dc);border-color:#6aa8ff;
+button.primary{background:linear-gradient(180deg,#4a90d9,#3a7bc0);border-color:#4a90d9;
   color:#0b1422;font-weight:650;min-width:100px}
-button.go{background:linear-gradient(180deg,#4fc98a,#2f9f68);border-color:#4fc98a;
-  color:#04140c;font-weight:650;min-width:130px}
+button.go{background:linear-gradient(180deg,#3ecb52,#2fa843);border-color:#3ecb52;
+  color:#0d1f10;font-weight:650;min-width:130px}
 button.ghost{background:transparent;color:var(--text-dim);padding:6px 12px;font-size:12px}
 
 .actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -165,8 +159,8 @@ button.ghost{background:transparent;color:var(--text-dim);padding:6px 12px;font-
 .stat.blue .value{color:var(--blue-2)}
 .stat.violet .value{color:var(--violet-2)}
 .advice{padding:11px 14px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;line-height:1.55}
-.advice.bad{background:rgba(239,107,107,.09);border:1px solid rgba(239,107,107,.3);color:#ffb3b3}
-.advice.good{background:rgba(79,201,138,.08);border:1px solid rgba(79,201,138,.28);color:#9de6c0}
+.advice.bad{background:rgba(239,107,107,.09);border:1px solid rgba(239,107,107,.3);color:#e79a97}
+.advice.good{background:rgba(62,203,82,.08);border:1px solid rgba(62,203,82,.28);color:#a5e0ae}
 .advice strong{color:#fff}
 
 .table-wrap{max-height:280px;overflow:auto;border:1px solid var(--border-soft);border-radius:var(--radius-sm)}
@@ -178,8 +172,8 @@ th{position:sticky;top:0;background:var(--panel-2);color:var(--text-dim);font-we
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,monospace;color:var(--text-dim)}
 .badge{padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
-.badge.ok{background:rgba(79,201,138,.16);color:#7fdcb2}
-.badge.bad{background:var(--bad-dim);color:#ff9d9d}
+.badge.ok{background:rgba(62,203,82,.16);color:#8fdc9a}
+.badge.bad{background:var(--bad-dim);color:#e79a97}
 .badge.dim{background:var(--raised);color:var(--text-faint)}
 
 .output-row{display:flex;gap:14px;align-items:center;justify-content:space-between;
@@ -193,7 +187,7 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
   color:var(--text-faint);font-size:12.5px;line-height:1.6}
 .footer em{color:var(--blue-2);font-style:normal}
 .unsupported{padding:14px 16px;border-radius:var(--radius-sm);background:var(--bad-dim);
-  border:1px solid var(--bad);color:#ffc3c3;margin-bottom:20px}
+  border:1px solid var(--bad);color:#e79a97;margin-bottom:20px}
 ::-webkit-scrollbar{width:11px;height:11px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#2f3d57;border-radius:99px;border:3px solid var(--panel)}
@@ -413,32 +407,34 @@ function applyVariants(text, variants) {
 
 /* ---------- WAV -> SampleFrame (2 x float32) ---------- */
 
-function wavToSampleFrames(bytes) {
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const tag = (o) => String.fromCharCode(bytes[o],bytes[o+1],bytes[o+2],bytes[o+3]);
-  if (bytes.length < 12 || tag(0) !== 'RIFF') throw new Error('not a RIFF/WAVE file');
-  let fmt = null, data = null, off = 12;
-  while (off + 8 <= bytes.length) {
-    const id = tag(off), size = dv.getUint32(off + 4, true);
-    if (id === 'fmt ' && size >= 16) fmt = { audioFormat: dv.getUint16(off+8,true), channels: dv.getUint16(off+10,true),
-      sampleRate: dv.getUint32(off+12,true), bits: dv.getUint16(off+22,true) };
-    else if (id === 'data') data = bytes.subarray(off+8, Math.min(off+8+size, bytes.length));
-    off += 8 + size + (size % 2);
+/**
+ * Decode any audio file the browser can read into LMMS SampleFrame layout:
+ * interleaved stereo float32.
+ *
+ * decodeAudioData handles WAV, MP3, OGG, FLAC, AIFF and AAC, and resamples to
+ * the context's rate. The context is created at 44100 because embedded audio
+ * carries no sample rate of its own, so LMMS assumes it already matches the
+ * engine rate, which defaults to 44100. Embedding 48kHz frames raw makes the
+ * project play flat by the ratio of the two rates. See DECISIONS.md.
+ */
+const TARGET_RATE = 44100;
+
+async function decodeToFrames(bytes) {
+  const ctx = new OfflineAudioContext(2, 1, TARGET_RATE);
+  const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const buf = await ctx.decodeAudioData(copy);
+
+  const n = buf.length;
+  const left = buf.getChannelData(0);
+  const right = buf.numberOfChannels > 1 ? buf.getChannelData(1) : left;
+
+  const out = new Uint8Array(n * 8);
+  const dv = new DataView(out.buffer);
+  for (let i = 0; i < n; i++) {
+    dv.setFloat32(i * 8, left[i], true);
+    dv.setFloat32(i * 8 + 4, right[i], true);
   }
-  if (!fmt || !data) throw new Error('missing fmt or data chunk');
-  if (fmt.audioFormat !== 1 && fmt.audioFormat !== 3) throw new Error(`unsupported encoding ${fmt.audioFormat}`);
-  const bps = fmt.bits/8, stride = bps*fmt.channels, frames = Math.floor(data.length/stride);
-  const out = new Uint8Array(frames*8), ov = new DataView(out.buffer);
-  const dd = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  const read = (p) => { switch (fmt.bits) {
-    case 8: return (data[p]-128)/128;
-    case 16: return dd.getInt16(p,true)/32768;
-    case 24: { const v = data[p]|(data[p+1]<<8)|(data[p+2]<<16); return ((v&0x800000)?v-0x1000000:v)/8388608; }
-    case 32: return fmt.audioFormat===3 ? dd.getFloat32(p,true) : dd.getInt32(p,true)/2147483648;
-    default: throw new Error(`unsupported bit depth ${fmt.bits}`); } };
-  for (let i=0;i<frames;i++){ const b=i*stride, l=read(b);
-    ov.setFloat32(i*8,l,true); ov.setFloat32(i*8+4, fmt.channels>1?read(b+bps):l, true); }
-  return { frames: out, info: fmt, frameCount: frames };
+  return { frames: out, frameCount: n, rate: buf.sampleRate, channels: buf.numberOfChannels };
 }
 
 function toBase64(bytes) {
@@ -525,7 +521,7 @@ async function embedXml(xml, cache, counters) {
     if(cache.has(n)) continue;
     const get=findSample(n);
     if(!get){cache.set(n,null);continue;}
-    try{ cache.set(n, toBase64(wavToSampleFrames(await get()).frames)); }catch{ cache.set(n,null); }
+    try{ cache.set(n, toBase64((await decodeToFrames(await get())).frames)); }catch{ cache.set(n,null); }
   }
   return xml.replace(TAG_RE,(whole,tag,before,src,after)=>{
     if(!src){counters.empty++;return whole;}
@@ -534,9 +530,47 @@ async function embedXml(xml, cache, counters) {
     if(!b64){counters.missing++;return whole;}
     counters.embedded++;
     const selfClosing=/\/\s*$/.test(after);
-    const attrs=`${before} ${after.replace(/\/\s*$/,'')}`.replace(/\s*\bsampledata="[^"]*"/g,'').replace(/\s+/g,' ').trim();
-    return `<${tag} ${attrs} sampledata="${xmlEscapeAttr(b64)}"${selfClosing?'/':''}>`;
+    const attrs=`${before} ${after.replace(/\/\s*$/,'')}`.replace(/\s*\b(sampledata|srcdata)="[^"]*"/g,'').replace(/\s+/g,' ').trim();
+    // LMMS 1.2 checks "sampledata" but reads "srcdata" (bug across stable-1.2),
+    // so write both. Measured: with sampledata alone 1.2.2 renders silence.
+    return `<${tag} ${attrs} sampledata="${xmlEscapeAttr(b64)}" srcdata="${xmlEscapeAttr(b64)}"${selfClosing?'/':''}>`;
   });
+}
+
+
+/* ---------- LMMS 1.2 compatibility ---------- */
+
+const LMMS13_ONLY=['midiclip','automationclip','mixer','mixerchannel','sampleclip'];
+
+function inspectCompat(xml){
+  const blockers=LMMS13_ONLY.filter(t=>new RegExp('<'+t+'\\b').test(xml));
+  const nodes=xml.match(/<midicontrollers\b[^>]*>/g)||[];
+  const empty=nodes.filter(n=>[...n.matchAll(/="([^"]*)"/g)].every(m=>m[1]==='0'));
+  const header=(xml.match(/<lmms-project[^>]*>/)||[''])[0];
+  return {blockers,midiControllers:nodes.length,removable:empty.length,
+          claims13:/creatorversion="1\.3/.test(header)};
+}
+
+/* Strip the 1.3-only cruft that makes LMMS 1.2 throw a modal per track. The
+   header is only reverted when the body has no 1.3-only elements, since
+   relabelling a genuinely 1.3 project would make it fail worse. */
+function makeCompat12(xml){
+  const b=inspectCompat(xml);
+  let out=xml, removed=0;
+  if(b.midiControllers>0 && b.removable===b.midiControllers){
+    removed=b.midiControllers;
+    out=out.replace(/\s*<midicontrollers\b[^>]*\/>/g,'')
+           .replace(/\s*<midicontrollers\b[^>]*>[\s\S]*?<\/midicontrollers>/g,'');
+  }
+  let headerChanged=false;
+  if(!b.blockers.length && b.claims13){
+    out=out.replace(/<lmms-project[^>]*>/,tag=>{
+      headerChanged=true;
+      return tag.replace(/creatorversion="[^"]*"/,'creatorversion="1.2.2"')
+                .replace(/\bversion="(?!1\.0")[^"]*"/,'version="1.0"');
+    });
+  }
+  return {xml:out,removed,headerChanged,blockers:b.blockers};
 }
 
 /* ---------- state ---------- */
@@ -779,6 +813,10 @@ $('run-btn').addEventListener('click',async()=>{
             final=await embedXml(final,cache,counters);
             if(/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(final))
               throw new Error('src left alongside sampledata');
+            const compat=makeCompat12(final);
+            final=compat.xml;
+            counters.ccRemoved=(counters.ccRemoved||0)+compat.removed;
+            if(compat.blockers.length) counters.blocked13=compat.blockers.join(', ');
             embeddedFile=item.name;
           }
           const outBytes=te.encode(final);

@@ -1,5 +1,63 @@
 # Daily Log
 
+## 08-10-2026
+
+Audio formats
+
+- The embedder only read WAV, because I wrote the decoder by hand. Replaced the whole thing with
+  `AudioContext.decodeAudioData`, which reads every format the browser supports, so MP3, OGG,
+  FLAC and AIFF all embed now. Tested by embedding an MP3 into a project whose references were all
+  `.wav` names, which works because matching is by filename and the decoder does not care what the
+  container actually is
+- ⚠️ The sample rate finding, which I had wrong earlier. I tested embedding with 44.1 kHz sources,
+  saw the render come out identical to the file-based version, and concluded rate did not matter.
+  That was only true because the sources happened to already be at 44.1. A 48 kHz sample embedded
+  raw renders at **202 Hz against the correct 220 Hz**, which is the 48000/44100 ratio flat.
+  Embedded audio carries no rate of its own, so LMMS reads the frames as though they are already at
+  the engine rate
+- The fix comes free with `decodeAudioData`, because creating the context at 44100 makes it
+  resample anything to 44.1 on the way in. A 22 kHz, a 48 kHz and a 96 kHz source of the same
+  quarter-second tone all come out at 11,024 frames. After that the 48 kHz source renders at
+  220 Hz, matching file-based exactly
+
+BIG ONE: LMMS 1.2 will not play embedded audio, and it is a bug in LMMS
+
+- Installed 1.2.2 alongside 1.3 to check the grader's environment properly. The delivered embedded
+  final renders **silent** in 1.2.2, peak 0, while the same project with file-based samples renders
+  at peak 32,767. Same install, so it is not a broken build
+- The cause is in `audio_file_processor.cpp` on `stable-1.2`:
+
+      else if( _this.attribute( "sampledata" ) != "" )
+      {
+          m_sampleBuffer.loadFromBase64( _this.attribute( "srcdata" ) );
+      }
+
+  It checks `sampledata` and then reads `srcdata`, which does not exist, so it loads an empty
+  string and plays nothing. No error, no warning, just silence
+- Writing the same base64 into BOTH attributes fixes it. 1.2 reads `srcdata`, 1.3 reads
+  `sampledata` and ignores the other. Measured after the change: 1.2.2 peak 32,767, 1.3 peak 28,834
+- The cost is that the audio is stored twice, so files roughly double. Acceptable because embedding
+  is only used on the final project
+
+The midicontrollers modal
+
+- The grader also reported a "Plugin not found: midicontrollers" modal once per track in 1.2. The
+  final has 18 of those nodes, one per instrument track, each with 128 attributes that are all
+  zero. They arrive when a project passes through 1.3 once, which also stamps the header
+  `creatorversion="1.3.0-alpha"`
+- The body underneath is still 1.2-shaped, `pattern` and `fxmixer` and `automationpattern`, so this
+  is a 1.2 project wearing a 1.3 label rather than a real format upgrade. Stripping the nodes and
+  reverting the header makes it genuinely 1.2 again, and 1.2.2 then loads it with zero complaints
+- The header only gets reverted when the body has no 1.3-only elements. A project that genuinely
+  contains `midiclip` or `mixer` cannot open in 1.2 whatever the header says, so relabelling it
+  would only make the failure worse and more confusing
+
+Colours
+
+- Repainted all three tools onto the LMMS palette, charcoal shell with the green it uses for clips
+  and the purple it uses for automation. The blue, green and purple accents still separate the
+  three tools from each other, they just come from LMMS now rather than being invented
+
 ## 08-09-2026
 
 Sample Embedder

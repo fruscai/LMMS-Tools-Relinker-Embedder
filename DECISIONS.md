@@ -1,17 +1,83 @@
 # Decisions
 
+## 08-10-2026 - LMMS 1.2 versus 1.3, and which output to use
+
+This is the decision tree to come back to if a project stops loading or plays silence somewhere.
+
+The short version
+
+- **Embedding does not work in LMMS 1.2 on its own.** 1.2 reads `srcdata`, 1.3 reads `sampledata`.
+  Writing both makes one file that plays in either, at the cost of storing the audio twice.
+- **A 1.3-saved project throws a modal per track in 1.2** because of `midicontrollers` nodes, which
+  are empty and can be removed.
+- **Some projects cannot be made 1.2-loadable at all.** If the body genuinely contains `midiclip`,
+  `mixer`, `mixerchannel`, `automationclip` or `sampleclip`, that is real 1.3 structure and no
+  header edit fixes it. The tool says so rather than pretending.
+
+The tree
+
+    Does the recipient's LMMS matter?
+    |
+    +-- Unknown, or 1.2  -> embed with BOTH sampledata and srcdata
+    |                        strip midicontrollers if all-zero
+    |                        revert header to 1.2.2 only if no 1.3-only elements
+    |                        cost: file size roughly doubles
+    |
+    +-- Known 1.3+       -> sampledata alone is enough, half the size
+    |
+    +-- Project contains midiclip / mixer / automationclip
+                          -> cannot open in 1.2 at any size. Warn and stop
+                             pretending. Ship to 1.3 or rebuild the project in 1.2
+
+Why write both attributes rather than pick one
+
+`stable-1.2` checks one attribute and reads another:
+
+    else if( _this.attribute( "sampledata" ) != "" )
+    {
+        m_sampleBuffer.loadFromBase64( _this.attribute( "srcdata" ) );
+    }
+
+So `sampledata` alone passes the check, loads an empty string, and plays silence with no error at
+all. `srcdata` alone would work in 1.2 and break 1.3, which reads `sampledata`. Writing both is the
+only single file that satisfies both, and 1.3 ignores the attribute it does not use.
+
+Measured, not assumed: as delivered, 1.2.2 rendered the final at peak 0 while the same project with
+file-based samples rendered at 32,767. After writing both attributes, 1.2.2 renders at 32,767 and
+1.3 at 28,834.
+
+Why the header only sometimes gets reverted
+
+A project that has passed through 1.3 gets stamped `creatorversion="1.3.0-alpha"` even when its body
+is still entirely 1.2 shaped, `pattern` and `fxmixer` and `automationpattern`. That is a label
+problem and reverting it is honest. A project that actually contains 1.3 elements is a different
+thing, and relabelling it would make 1.2 try to parse elements it does not understand instead of
+refusing cleanly. Same principle as everywhere else here: fail loudly rather than produce something
+that looks fine and is not.
+
+Resample everything to 44.1 on ingest
+
+Embedded audio carries no sample rate, so LMMS assumes the frames already match the engine rate,
+which defaults to 44100. A 48 kHz sample embedded raw plays flat by exactly 48000/44100, measured at
+202 Hz against a correct 220 Hz. Decoding through an `AudioContext` created at 44100 resamples
+anything on the way in, which fixes it and also brings MP3, OGG, FLAC and AIFF support along for
+free.
+
+Fixed at 44100 rather than configurable, because that is LMMS's default engine rate and a grader
+will be running defaults. If a machine is ever found running a 48 kHz engine, embedded audio would
+play fast there and the target rate would need to become a setting.
+
 ## 08-09-2026 - Shipping shape
 
-Three tools rather than one
+Two tools, used separately
 
-- Keeping the relinker, the embedder and the combined relink-and-embed as three separate tools,
-  because they answer different questions and merging them into one tool with modes made the choice
-  harder rather than easier. Relinking fixes the paths on my own machine so I can open and work on
-  the projects. Embedding produces a file that works on a machine I have no control over. Those are
-  different jobs and the tool should not pretend otherwise.
-- The combined one exists because the normal workflow genuinely needs both in sequence: relink
-  everything so the set is workable locally, then embed the single final project that gets sent
-  out.
+- The relinker and the embedder are separate tools and get used separately, not as a pipeline.
+  The relinker is for pointing projects at wherever the samples actually live when that is not the
+  gig folder. The embedder is for the final project only, the copy that gets sent out.
+- That split is also why the size cost of embedding is acceptable. It only ever lands on one file
+  rather than on a whole snapshot tree.
+- There is a combined relink-and-embed build as well, which runs both in one pass. It works, but it
+  is not the path in normal use.
 
 Single HTML file rather than Electron
 
