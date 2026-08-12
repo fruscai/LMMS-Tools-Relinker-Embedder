@@ -15,7 +15,10 @@ const { replacePathRoot } = require('../src/core/pathReplace');
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
 const OLD_PASTED = 'C:\\Users\\Administrator\\Desktop\\future_garage_original\\';
-const NEW_PATH = '/Users/aminebouzaher/Documents/lmms/samples/gig/';
+// Wherever LMMS keeps its user samples on this machine. Override with GIG_DIR
+// to point the check at a different folder.
+const NEW_PATH = process.env.GIG_DIR
+  || require('path').join(require('os').homedir(), 'Documents/lmms/samples/gig/');
 const LMMS = '/Applications/LMMS.app/Contents/MacOS/lmms';
 
 const browserFile = process.argv[2];
