@@ -804,6 +804,28 @@ $('scan-btn').addEventListener('click', async () => {
 
 /* ---------- embed ---------- */
 
+
+/* Browsers cap how long a single string can be. Doubling the payload for 1.2
+   compatibility doubles it again, so a long sample across many instruments can
+   blow that ceiling. Estimate first and say so plainly rather than dying with
+   a RangeError halfway through. */
+const MAX_XML_CHARS = 300 * 1024 * 1024;
+
+function checkPayloadSize(xml, cache, refCounts) {
+  let total = xml.length;
+  for (const [name, count] of refCounts) {
+    const b64 = cache.get(name);
+    if (b64) total += b64.length * count * 2;   // sampledata + srcdata
+  }
+  if (total > MAX_XML_CHARS) {
+    throw new Error(
+      `Project would reach ${(total / 1048576).toFixed(0)} MB of text, past what a browser ` +
+      `can hold. Use shorter samples, or fewer instruments sharing one long sample.`
+    );
+  }
+  return total;
+}
+
 async function embedXml(xml, cache, counters) {
   const names = new Set();
   for (const src of collectRefs(xml)) {
@@ -817,6 +839,14 @@ async function embedXml(xml, cache, counters) {
       cache.set(n, toBase64((await decodeToFrames(await getBytes())).frames));
     } catch { cache.set(n, null); }
   }
+
+  const refCounts = new Map();
+  for (const s of collectRefs(xml)) {
+    if (!s || isFactory(s)) continue;
+    const n = sampleNameOf(s);
+    refCounts.set(n, (refCounts.get(n) || 0) + 1);
+  }
+  checkPayloadSize(xml, cache, refCounts);
 
   return xml.replace(TAG_RE, (whole, tag, before, src, after) => {
     if (!src) { counters.empty++; return whole; }

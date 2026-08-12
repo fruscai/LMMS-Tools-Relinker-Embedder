@@ -32,8 +32,9 @@ will change.
 left to resolve. No sample folder, no `resources` folder, no path to break, works on any LMMS
 version. Embed everything, or just one final project.
 
-**`web/lmms-relink-embed.html`** — both in one pass. Stage A relinks everything so it runs locally,
-Stage B embeds one chosen project to send elsewhere.
+**`web/lmms-tools.html`** — both tools in one file, on two tabs. They are independent: Relink for a
+whole folder of projects, Embed for the one final project going out. Neither tab needs the other to
+have run first.
 
 Output folders are named for what ran: `-RELINKED`, `-EMBEDDED`, `-RELINKED-EMBEDDED`.
 

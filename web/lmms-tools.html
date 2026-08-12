@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LMMS Relinker + Embedder</title>
+<title>LMMS Tools</title>
 <style>
 :root{
   --ok-dim:#24361f;--accent-dim:#2f4256;--bg:#1e2024;--panel:#26292e;--panel-2:#2d3137;--raised:#363a41;--border:#41464e;--border-soft:#343941;--text:#d8dce1;--text-dim:#9aa1aa;--text-faint:#6b737d;--blue:#4a90d9;--blue-2:#7db6ec;--violet:#8351d4;--violet-2:#a884e8;--ok:#3ecb52;--warn:#e0a33e;--bad:#d9534f;--bad-dim:#3a2626;--radius:14px;--radius-sm:9px;
@@ -38,6 +38,23 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+
+.tabs{display:flex;gap:6px;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.tab{background:transparent;border:1px solid transparent;border-bottom:none;
+  border-radius:8px 8px 0 0;padding:11px 20px;font-size:13.5px;font-weight:600;
+  color:var(--text-faint);cursor:pointer;margin-bottom:-1px}
+.tab:hover:not(.active){color:var(--text-dim);background:var(--panel)}
+.tab.active{color:var(--text);background:var(--panel);border-color:var(--border);
+  border-bottom:1px solid var(--panel)}
+.tab.a.active{color:var(--blue-2);box-shadow:inset 0 2px 0 var(--blue)}
+.tab.b.active{color:var(--violet-2);box-shadow:inset 0 2px 0 var(--violet)}
+.tab-note{margin:0 0 22px;color:var(--text-faint);font-size:12.5px;line-height:1.6}
+.attribution{display:flex;align-items:flex-start;gap:10px;margin:0 0 18px;padding:11px 14px;
+  border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:var(--radius-sm);
+  background:var(--panel);color:var(--text-dim);font-size:12.5px;line-height:1.6}
+.attribution strong{color:var(--text);font-weight:600}
+.attribution .who{color:var(--text);font-weight:600}
+.attribution .id{color:var(--text-faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
 .stage{border-left:2px solid var(--border);padding-left:18px;margin-bottom:30px}
 .stage.violet{border-left-color:rgba(131,81,212,.55)}
 .stage-title{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -200,8 +217,8 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
     <div class="brand">
       <div class="brand-mark" aria-hidden="true"><span class="mark-link"></span></div>
       <div class="brand-text">
-        <h1>LMMS Relinker + Embedder</h1>
-        <p>Fix sample paths, then embed the final project</p>
+        <h1>LMMS Tools</h1>
+        <p>Two separate tools for LMMS projects</p>
       </div>
     </div>
     <div class="privacy-pill"><span class="dot"></span> Runs in your browser</div>
@@ -209,6 +226,23 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
 
   <div id="unsupported" class="unsupported" hidden></div>
 
+  <!-- Sits outside both panels on purpose, so it shows on either tab and cannot
+       be dismissed or scrolled past on one of them. -->
+  <div class="attribution">
+    <span>
+      Created and verified by <span class="who">Amine Bouzaher</span>
+      <span class="id">/ 3f89cf2b5de7</span>.
+      <strong>DO NOT EDIT CODE</strong> and please reach out on Slack if you have any questions.
+    </span>
+  </div>
+
+  <div class="tabs">
+    <button type="button" class="tab a active" data-tab="relink">Relink</button>
+    <button type="button" class="tab b" data-tab="embed">Embed</button>
+  </div>
+  <p id="tab-note" class="tab-note"></p>
+
+  <div id="panel-relink">
   <!-- source -->
   <section class="step">
     <div class="step-head"><span class="step-num">1</span><h3>Source</h3></div>
@@ -236,10 +270,10 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
   <!-- STAGE A : relink -->
   <section class="stage">
     <div class="stage-title">
-      <span class="stage-tag a">Stage A</span>
+      <span class="stage-tag a">Relink</span>
       <h2>Relink</h2>
     </div>
-    <p class="stage-sub">Points every project at samples on this machine. Run LMMS locally after this.</p>
+    <p class="stage-sub">Points every project at samples that exist on this machine.</p>
 
     <div class="field-stack">
       <label class="field">
@@ -262,22 +296,40 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
     <p class="note">Both slash directions are matched. LMMS stores Windows paths with forward slashes.</p>
   </section>
 
-  <!-- STAGE B : embed -->
+  </div><!-- /panel-relink -->
+
+  <div id="panel-embed" hidden>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">1</span><h3>Source</h3></div>
+    <div id="e-dropzone" class="dropzone">
+      <div class="dropzone-inner">
+        <div class="drop-icon" aria-hidden="true"><span class="folder"></span></div>
+        <p class="drop-title">Drop a project folder or ZIP here</p>
+        <p class="drop-sub">Folder or ZIP only</p>
+        <div class="button-row">
+          <button type="button" id="e-pick-folder">Choose folder</button>
+          <button type="button" id="e-pick-zip">Choose ZIP</button>
+        </div>
+      </div>
+    </div>
+    <div id="e-source-chip" class="source-chip" hidden>
+      <span class="chip-icon"></span>
+      <div class="chip-body"><span class="chip-label">Selected</span><code id="e-source-path"></code></div>
+      <button id="e-clear-source" type="button" class="ghost">Change</button>
+    </div>
+    <input id="e-file-folder" type="file" webkitdirectory directory multiple hidden />
+    <input id="e-file-zip" type="file" accept=".zip" hidden />
+  </section>
+
   <section class="stage violet">
     <div class="stage-title">
-      <span class="stage-tag b">Stage B</span>
-      <h2>Embed final project</h2>
+      <span class="stage-tag b">Embed</span>
+      <h2>Embed one project</h2>
     </div>
-    <p class="stage-sub">Writes audio into one project so it plays anywhere. Send that file to the grader.</p>
+    <p class="stage-sub">Writes audio into one project so it needs no external sample files.</p>
 
-    <label class="toggle-row">
-      <input id="opt-embed" type="checkbox" />
-      <span>Embed the final project
-        <em>Optional. Everything else stays relinked and unchanged.</em>
-      </span>
-    </label>
-
-    <div id="embed-opts" hidden>
+    <div id="embed-opts">
       <div class="pick-row">
         <span class="chip-label" style="margin:0">Project</span>
         <select id="project-select"></select>
@@ -292,9 +344,18 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
     </div>
   </section>
 
+    <section class="step">
+      <div class="step-head"><span class="step-num">3</span><h3>Check and run</h3></div>
+      <div class="actions">
+        <button id="e-scan-btn" type="button" class="primary" disabled>Check</button>
+        <button id="e-run-btn" type="button" class="go" disabled>Embed &amp; save</button>
+      </div>
+    </section>
+  </div><!-- /panel-embed -->
+
   <!-- run -->
-  <section class="step">
-    <div class="step-head"><span class="step-num">2</span><h3>Check and run</h3></div>
+  <section class="step" id="run-section">
+    <div class="step-head"><span class="step-num">3</span><h3>Check and run</h3></div>
     <div class="actions">
       <button id="scan-btn" type="button" class="primary" disabled>Check</button>
       <button id="run-btn" type="button" class="go" disabled>Run</button>
@@ -333,7 +394,8 @@ td.file{white-space:normal;word-break:break-all;font-family:ui-monospace,Menlo,m
 <script>
 'use strict';
 /* LMMS Relinker + Embedder.
-   Stage A rewrites sample paths. Stage B writes audio into one project.
+   Two independent tools. Relink rewrites sample paths. Embed writes audio into one
+   project. They are often used one after the other but neither requires the other.
    src wins over sampledata in LMMS, so embedding removes src entirely. */
 
 const SUPPORTED = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
@@ -514,6 +576,28 @@ const isProjectFile=(n)=>/\.(mmpz|mmp)(\.bak)?$/i.test(n);
 const isCompressedName=(n)=>/\.mmpz(\.bak)?$/i.test(n);
 function collectRefs(xml){const r=[];for(const t of xml.match(NODE_RE)||[]){const m=t.match(/\bsrc="([^"]*)"/);if(m)r.push(m[1]);}return r;}
 
+
+/* Browsers cap how long a single string can be. Doubling the payload for 1.2
+   compatibility doubles it again, so a long sample across many instruments can
+   blow that ceiling. Estimate first and say so plainly rather than dying with
+   a RangeError halfway through. */
+const MAX_XML_CHARS = 300 * 1024 * 1024;
+
+function checkPayloadSize(xml, cache, refCounts) {
+  let total = xml.length;
+  for (const [name, count] of refCounts) {
+    const b64 = cache.get(name);
+    if (b64) total += b64.length * count * 2;   // sampledata + srcdata
+  }
+  if (total > MAX_XML_CHARS) {
+    throw new Error(
+      `Project would reach ${(total / 1048576).toFixed(0)} MB of text, past what a browser ` +
+      `can hold. Use shorter samples, or fewer instruments sharing one long sample.`
+    );
+  }
+  return total;
+}
+
 async function embedXml(xml, cache, counters) {
   const names=new Set();
   for(const s of collectRefs(xml)) if(s&&!isFactory(s)) names.add(sampleNameOf(s));
@@ -523,6 +607,14 @@ async function embedXml(xml, cache, counters) {
     if(!get){cache.set(n,null);continue;}
     try{ cache.set(n, toBase64((await decodeToFrames(await get())).frames)); }catch{ cache.set(n,null); }
   }
+  const refCounts = new Map();
+  for (const s of collectRefs(xml)) {
+    if (!s || isFactory(s)) continue;
+    const n = sampleNameOf(s);
+    refCounts.set(n, (refCounts.get(n) || 0) + 1);
+  }
+  checkPayloadSize(xml, cache, refCounts);
+
   return xml.replace(TAG_RE,(whole,tag,before,src,after)=>{
     if(!src){counters.empty++;return whole;}
     if(isFactory(src)){counters.factory++;return whole;}
@@ -660,12 +752,6 @@ document.addEventListener('drop',async e=>{
   if(/\.zip$/i.test(f.name)){try{await useZip(f);}catch(err){setStatus(err.message,'error');}}
   else setStatus('Drop a ZIP, or use Choose folder.','error');});
 
-/* ---------- stage B toggle ---------- */
-
-$('opt-embed').addEventListener('change',()=>{
-  $('embed-opts').hidden=!$('opt-embed').checked;
-  state.scanned=null;refresh();});
-$('project-select').addEventListener('change',()=>{state.scanned=null;refresh();});
 
 /* ---------- live example ---------- */
 
@@ -694,7 +780,7 @@ $('scan-btn').addEventListener('click',async()=>{
   setStatus('checking…');$('scan-btn').disabled=true;$('run-btn').disabled=true;
   $('progress').hidden=false;$('result-panel').hidden=true;
   const variants=buildVariants($('old-path').value,$('new-path').value);
-  const embedOn=$('opt-embed').checked;
+  const embedOn=false;
   const finalName=$('project-select').value;
 
   const rows=[]; let projects=0,projectsWithMatches=0,occurrences=0,embeddable=0,embedMissing=0;
@@ -744,7 +830,7 @@ $('scan-btn').addEventListener('click',async()=>{
     if(embedOn&&embedMissing){
       a.className='advice bad';
       a.innerHTML=`<strong>${embedMissing} sample(s) not found.</strong> Not found: `+
-        `<code>${esc([...missingNames].slice(0,5).join(', '))}</code>. Add that folder in Stage B.`;
+        `<code>${esc([...missingNames].slice(0,5).join(', '))}</code>. Add that folder above.`;
       a.hidden=false;
     } else if(!projectsWithMatches){
       a.className='advice bad';
@@ -770,7 +856,7 @@ $('scan-btn').addEventListener('click',async()=>{
 /* ---------- run ---------- */
 
 $('run-btn').addEventListener('click',async()=>{
-  const embedOn=$('opt-embed').checked;
+  const embedOn=false;
   const finalName=$('project-select').value;
   const outName=`${state.label.replace(/\.zip$/i,'')}-RELINKED${embedOn?'-EMBEDDED':''}`;
   let dir=null;
@@ -803,12 +889,12 @@ $('run-btn').addEventListener('click',async()=>{
           const compressed=isCompressedName(item.name);
           const xml=td.decode(compressed?await decompressMmpz(bytes):bytes);
 
-          // Stage A
+          // relink
           const r=applyVariants(xml,variants);
           if(r.count){relinked++;paths+=r.count;}
           let final=r.text;
 
-          // Stage B, one project only
+          // embed, one project only
           if(embedOn&&item.name===finalName){
             final=await embedXml(final,cache,counters);
             if(/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(final))
@@ -868,6 +954,207 @@ $('download-btn').addEventListener('click',()=>{
 });
 
 refreshSamples();refresh();
+
+/* ---------- tabs: two independent tools in one file ---------- */
+
+const TAB_NOTE = {
+  relink: 'Rewrites sample paths across every project in a folder, for when the samples are not ' +
+          'where the projects expect them. Output is <code>-RELINKED</code>.',
+  embed:  'Writes the audio into one project so it carries its own samples and plays anywhere, ' +
+          'including LMMS 1.2. Output is <code>-EMBEDDED</code>.',
+};
+
+/* Each tab keeps its own source, so tab 2 can take tab 1's output. */
+const embedState = { kind: null, label: '', items: [], samples: new Map(), scanned: null, output: null };
+let activeTab = 'relink';
+
+function showTab(name) {
+  activeTab = name;
+  for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === name);
+  $('panel-relink').hidden = name !== 'relink';
+  $('panel-embed').hidden = name !== 'embed';
+  $('run-section').hidden = name !== 'relink';
+  $('tab-note').innerHTML = TAB_NOTE[name];
+  $('scan-panel').hidden = true;
+  $('result-panel').hidden = true;
+  setStatus('');
+}
+for (const t of document.querySelectorAll('.tab')) {
+  t.addEventListener('click', () => showTab(t.dataset.tab));
+}
+
+/* ---------- embed tab: its own source ---------- */
+
+function eSetSource(kind, label, items) {
+  embedState.kind = kind; embedState.label = label; embedState.items = items;
+  embedState.scanned = null; embedState.samples = new Map();
+  for (const it of items) if (!it.isDir && AUDIO_EXT.test(it.name)) {
+    const base = it.name.split('/').pop();
+    if (!embedState.samples.has(base)) embedState.samples.set(base, it.getBytes);
+    const l = base.toLowerCase();
+    if (!embedState.samples.has(l)) embedState.samples.set(l, it.getBytes);
+  }
+  const p = items.filter(i => isProjectFile(i.name) && !i.isDir).length;
+  $('e-source-path').textContent = `${label} (${p} LMMS file(s), ${items.length} total)`;
+  $('e-source-chip').hidden = false;
+  $('e-dropzone').hidden = true;
+  // reuse the shared sample list + project picker for this tab
+  state.samples = embedState.samples;
+  state.items = items;
+  refreshSamples(); refreshProjects(); eRefresh();
+}
+
+$('e-clear-source').addEventListener('click', () => {
+  embedState.items = []; embedState.samples = new Map(); embedState.scanned = null;
+  $('e-source-chip').hidden = true; $('e-dropzone').hidden = false;
+  state.items = []; state.samples = new Map();
+  refreshSamples(); eRefresh(); setStatus('');
+});
+
+$('e-pick-folder').addEventListener('click', () => $('e-file-folder').click());
+$('e-pick-zip').addEventListener('click', () => $('e-file-zip').click());
+
+$('e-file-folder').addEventListener('change', (e) => {
+  if (!e.target.files.length) return;
+  const items = [...e.target.files].map(f => ({
+    name: f.webkitRelativePath || f.name, isDir: false,
+    times: dosNow(new Date(f.lastModified)),
+    getBytes: async () => new Uint8Array(await f.arrayBuffer()),
+  }));
+  eSetSource('folder', (e.target.files[0].webkitRelativePath || '').split('/')[0] || 'folder', items);
+});
+
+$('e-file-zip').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    setStatus('reading archive…');
+    const entries = readZip(await f.arrayBuffer());
+    eSetSource('zip', f.name, entries.map(en => ({
+      name: en.name, isDir: en.isDir, times: { time: en.time, day: en.day },
+      getBytes: () => readEntry(en),
+    })));
+    setStatus('');
+  } catch (err) { setStatus(err.message, 'error'); }
+});
+
+function eRefresh() {
+  const ready = SUPPORTED && embedState.items.length > 0 && $('project-select').value;
+  $('e-scan-btn').disabled = !ready;
+  $('e-run-btn').disabled = !(ready && embedState.scanned && embedState.scanned.ok);
+}
+
+$('e-scan-btn').addEventListener('click', async () => {
+  setStatus('checking…');
+  try {
+    const target = embedState.items.find(i => i.name === $('project-select').value);
+    const bytes = await target.getBytes();
+    const xml = td.decode(isCompressedName(target.name) ? await decompressMmpz(bytes) : bytes);
+
+    let found = 0, missing = 0; const missingNames = new Set();
+    for (const src of collectRefs(xml)) {
+      if (!src || isFactory(src)) continue;
+      const n = sampleNameOf(src);
+      if (findSample(n)) found++; else { missing++; missingNames.add(n); }
+    }
+    const compat = inspectCompat(xml);
+    embedState.scanned = { ok: found > 0 && missing === 0, found, missing };
+
+    $('scan-headline').innerHTML =
+      `<strong>${target.name}</strong> · <strong>${found}</strong> sample(s) to embed` +
+      (missing ? ` · <strong>${missing}</strong> missing` : '');
+    $('scan-summary').innerHTML = [
+      stat(found, 'to embed', 'violet'),
+      stat(missing, 'missing', missing ? 'bad' : ''),
+      stat(compat.removable, 'LMMS 1.2 fixes'),
+    ].join('');
+
+    const a = $('scan-advice');
+    if (missing) {
+      a.className = 'advice bad';
+      a.innerHTML = `<strong>${missing} sample(s) not found:</strong> <code>${esc([...missingNames].slice(0,5).join(', '))}</code>. Add that folder above.`;
+    } else if (compat.blockers.length) {
+      a.className = 'advice bad';
+      a.innerHTML = `All samples found. <strong>Note:</strong> uses LMMS 1.3 features (<code>${esc(compat.blockers.join(', '))}</code>) that 1.2 cannot open at all.`;
+    } else {
+      a.className = 'advice good';
+      a.innerHTML = 'All samples found.' + (compat.removable ? ` Will clear ${compat.removable} <code>midicontrollers</code> node(s) for LMMS 1.2.` : '');
+    }
+    a.hidden = false;
+    $('scan-body').innerHTML = '';
+    $('scan-panel').hidden = false;
+    setStatus(missing ? 'Some samples were not found.' : 'Ready to embed.', missing ? 'error' : 'done');
+  } catch (err) { setStatus(err.message, 'error'); }
+  eRefresh();
+});
+
+$('e-run-btn').addEventListener('click', async () => {
+  const outName = `${embedState.label.replace(/\.zip$/i,'')}-EMBEDDED`;
+  let dir = null;
+  if (CAN_STREAM) { try { dir = await window.showDirectoryPicker({ mode:'readwrite' }); } catch { setStatus('cancelled'); return; } }
+
+  setStatus('embedding…'); $('e-scan-btn').disabled = true; $('e-run-btn').disabled = true;
+  $('progress').hidden = false;
+
+  const chosen = $('project-select').value;
+  const counters = { embedded:0, missing:0, empty:0, factory:0 };
+  const records = []; let bytesOut = 0, ccRemoved = 0;
+
+  const writeOut = async (rel, bytes) => {
+    bytesOut += bytes.length;
+    if (dir) {
+      const parts = `${outName}/${rel}`.split('/').filter(Boolean);
+      let d = dir;
+      for (const p of parts.slice(0,-1)) d = await d.getDirectoryHandle(p,{create:true});
+      const fh = await d.getFileHandle(parts[parts.length-1],{create:true});
+      const w = await fh.createWritable(); await w.write(bytes); await w.close();
+    } else records.push(await makeRecord(`${outName}/${rel}`, bytes));
+  };
+
+  try {
+    for (let i = 0; i < embedState.items.length; i++) {
+      const item = embedState.items[i];
+      if (item.isDir) continue;
+      if (item.name === chosen) {
+        const bytes = await item.getBytes();
+        const compressed = isCompressedName(item.name);
+        const xml = td.decode(compressed ? await decompressMmpz(bytes) : bytes);
+        let out = await embedXml(xml, new Map(), counters);
+        if (/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(out))
+          throw new Error('src left alongside sampledata');
+        const compat = makeCompat12(out);
+        out = compat.xml; ccRemoved = compat.removed;
+        const b = te.encode(out);
+        await writeOut(item.name, compressed ? await compressMmpz(b) : b);
+      } else {
+        await writeOut(item.name, await item.getBytes());
+      }
+      $('progress-bar').style.width = `${Math.round(((i+1)/embedState.items.length)*100)}%`;
+      if (i % 3 === 0) { setStatus(`embedding… ${i+1} of ${embedState.items.length}`); await new Promise(r=>setTimeout(r)); }
+    }
+
+    if (!dir) { state.output = buildZip(records); $('download-btn').hidden = false;
+                $('output-name').textContent = `${outName}.zip`; }
+    else { $('download-btn').hidden = true; $('output-name').textContent = `${outName}/`; }
+
+    $('result-summary').innerHTML = [
+      stat(counters.embedded, 'samples embedded', 'violet'),
+      stat(counters.missing, 'missing', counters.missing ? 'bad' : ''),
+      stat(ccRemoved, 'LMMS 1.2 fixes', 'good'),
+      stat(mb(bytesOut), 'size'),
+    ].join('');
+    $('result-note').textContent = `Embedded: ${chosen}`;
+    $('result-hint').textContent = 'Plays in LMMS 1.2 and 1.3 with no external sample files.';
+    $('result-panel').hidden = false;
+    setStatus(counters.missing ? 'Finished with missing samples.' : 'Done.', counters.missing ? 'error' : 'done');
+  } catch (err) { setStatus(err.message, 'error'); }
+  finally { $('progress').hidden = true; eRefresh(); }
+});
+
+$('project-select').addEventListener('change', () => { embedState.scanned = null; eRefresh(); });
+
+showTab('relink');
+
 </script>
 </body>
 </html>
