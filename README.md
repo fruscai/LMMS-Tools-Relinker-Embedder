@@ -83,6 +83,15 @@ they work when you run LMMS from the project's own folder and give you silence a
 **`local:` needs LMMS 1.3.0-alpha or later.** 1.2.2 is still the last stable release, which is why
 embedding travels better than bundling.
 
+**Embedded audio carries no sample rate**, so LMMS assumes the frames already match the engine rate.
+A 48 kHz sample embedded raw plays flat by exactly 48000/44100, measured at 202 Hz against a correct
+220 Hz. The embedder decodes through an `AudioContext` created at 44100, so everything is resampled
+to 44.1 on the way in. That also brings MP3, OGG, FLAC and AIFF support along with it.
+
+44100 is fixed rather than configurable, because it is LMMS's default engine rate. On a machine
+running a 48 kHz engine the embedded audio would play fast, and the target rate would have to become
+a setting. See [`DECISIONS.md`](DECISIONS.md).
+
 ## Safety
 
 - Source files only ever get read. Output goes to a separate tree
