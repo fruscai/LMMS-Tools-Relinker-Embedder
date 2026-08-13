@@ -111,6 +111,16 @@ docs/         format notes, testing notes, bundling notes
 
 `src/core` has no UI or Electron dependencies.
 
+## Doing this inside LMMS instead
+
+[lmms-embed-samples](https://github.com/fruscai/lmms-embed-samples) is a patch that adds embedding
+to LMMS itself, as a checkbox in the Save As dialog and an `lmms embedsamples <in> <out>` command.
+It covers more than these tools do: SlicerT, TripleOscillator user waves, and the envelope and LFO
+user waves that no LMMS version could embed before.
+
+It is LMMS 1.3 only. Anything saved by it is a 1.3 project, so **for LMMS 1.2 use the embedder
+here**, which writes `srcdata` alongside `sampledata`.
+
 [`LOG.md`](LOG.md) and [`DECISIONS.md`](DECISIONS.md) have how this got built and why.
 [`docs/LEXICON.md`](docs/LEXICON.md) is how the writing in here is meant to read.
 
