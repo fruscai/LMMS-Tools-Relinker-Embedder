@@ -29,8 +29,10 @@ Give it the broken folder and the correct one. Scan first, it's read-only and sh
 will change.
 
 **`web/lmms-sample-embedder.html`** — writes the audio INTO the project file, so there's nothing
-left to resolve. No sample folder, no `resources` folder, no path to break, works on any LMMS
-version. Embed everything, or just one final project.
+left to resolve. No sample folder, no `resources` folder, no path to break. Writes both `sampledata`
+and `srcdata`, so the audio plays in 1.2 and 1.3 alike. The project body still has to be 1.2 shaped
+for 1.2 to open it at all, which means authored there rather than round-tripped through 1.3. Embed
+everything, or just one final project.
 
 **`web/lmms-tools.html`** — both tools in one file, on two tabs. They are independent: Relink for a
 whole folder of projects, Embed for the one final project going out. Neither tab needs the other to
@@ -110,6 +112,7 @@ docs/         format notes, testing notes, bundling notes
 `src/core` has no UI or Electron dependencies.
 
 [`LOG.md`](LOG.md) and [`DECISIONS.md`](DECISIONS.md) have how this got built and why.
+[`docs/LEXICON.md`](docs/LEXICON.md) is how the writing in here is meant to read.
 
 ## License
 
