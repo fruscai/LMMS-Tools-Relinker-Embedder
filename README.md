@@ -131,7 +131,6 @@ It is LMMS 1.3 only. Anything saved by it is a 1.3 project, so **for LMMS 1.2 us
 here**, which writes `srcdata` alongside `sampledata`.
 
 [`LOG.md`](LOG.md) and [`DECISIONS.md`](DECISIONS.md) have how this got built and why.
-[`docs/LEXICON.md`](docs/LEXICON.md) is how the writing in here is meant to read.
 
 ## License
 
