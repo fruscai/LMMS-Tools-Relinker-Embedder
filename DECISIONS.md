@@ -12,7 +12,7 @@ The short version
   are empty and can be removed.
 - **Some projects cannot be made 1.2-loadable at all.** If the body genuinely contains `midiclip`,
   `mixer`, `mixerchannel`, `automationclip` or `sampleclip`, that is real 1.3 structure and no
-  header edit fixes it. The tool says so rather than pretending.
+  header edit fixes it. The tool reports this instead of relabelling the header.
 
 The tree
 
@@ -27,7 +27,7 @@ The tree
     |
     +-- Project contains midiclip / mixer / automationclip
                           -> cannot open in 1.2 at any size. Warn and stop
-                             pretending. Ship to 1.3 or rebuild the project in 1.2
+                             relabelling. Ship to 1.3 or rebuild the project in 1.2
 
 Why write both attributes rather than pick one
 
@@ -52,8 +52,8 @@ A project that has passed through 1.3 gets stamped `creatorversion="1.3.0-alpha"
 is still entirely 1.2 shaped, `pattern` and `fxmixer` and `automationpattern`. That is a label
 problem and reverting it is honest. A project that actually contains 1.3 elements is a different
 thing, and relabelling it would make 1.2 try to parse elements it does not understand instead of
-refusing cleanly. Same principle as everywhere else here: fail loudly rather than produce something
-that looks fine and is not.
+refusing. Same rule as the rest of this: report the failure rather than write a file that opens and
+plays silence.
 
 Resample everything to 44.1 on ingest
 

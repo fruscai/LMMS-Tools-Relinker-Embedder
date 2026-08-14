@@ -72,9 +72,9 @@ Not gzip, not a ZIP archive.
 **`src` beats `sampledata`.** To embed audio the `src` attribute has to be REMOVED, not blanked, or
 LMMS ignores what you embedded and reports a missing file.
 
-**`makebundle` fails while exiting 0.** It writes no project file when the project has an empty
-sample slot (`src=""`), or when it already uses `local:` references. Anything scripting it has to
-check the output exists. The exit code lies.
+**`makebundle` exits 0 without writing a project file** when the project has an empty sample slot
+(`src=""`), or when it already uses `local:` references. Check the output file exists rather than
+the exit code.
 
 **Bare relative paths resolve against the working directory**, not the project file. They look like
 they work when you run LMMS from the project's own folder and give you silence anywhere else. Only
