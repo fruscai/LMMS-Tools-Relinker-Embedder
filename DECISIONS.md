@@ -1,5 +1,27 @@
 # Decisions
 
+## 08-27-2026 - The embedder does samples and nothing else
+
+The 08-10 tree above still describes the format. What changed is which parts this tool acts on.
+
+- **The version compatibility pass is out of the embed path.** Stripping `midicontrollers` and
+  reverting headers is 1.2-versus-1.3 work, and the target is stock 1.3, where none of it applies.
+  Embedding and version repair were tangled in one pass and are now separate problems. The
+  `srcdata` dual-write stays, because it costs nothing in 1.3 and keeps instrument samples playing
+  in 1.2.
+- **No size cap.** The old 300 MB limit was a policy number. The check now sits at 500 MB of text,
+  under the ~536 M character string limit past which the output cannot exist in any Chromium
+  browser or Node. The error names the heaviest sample and points at the native
+  `lmms embedsamples` command, which has no such limit.
+- **A clip is a copy, and that is accepted.** A sample on eleven clips is written eleven times,
+  because a clip reads only its own `data` attribute and the format has no shared reference.
+  8.2 MB of wav across eleven clips is 229 MB of XML and a 108 MB `.mmpz`, which loads and renders
+  in stock 1.3 identical to the file-based project. Trimming each clip to the region it plays
+  would shrink this and was not done, because it rewrites `off` and changes the arrangement on
+  disk.
+- **The scope step is gone from the UI.** Every project in the source gets embedded. One final
+  project is one dropped `.mmpz`, which the input now accepts directly.
+
 ## 08-10-2026 - LMMS 1.2 versus 1.3, and which output to use
 
 This is the decision tree to come back to if a project stops loading or plays silence somewhere.
