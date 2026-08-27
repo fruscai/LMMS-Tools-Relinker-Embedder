@@ -1,5 +1,54 @@
 # Daily Log
 
+## 08-27-2026
+
+Escaped sample names
+
+- BIG ONE: **sample names come out of the raw XML still escaped.** A project referencing
+  `R&B Piano 83BPM.wav` holds `usergig:R&amp;B Piano 83BPM.wav` in `src`, and the lookup matched
+  that escaped form against the filename on disk. Found nothing, reported the sample missing,
+  wrote the project back unchanged. Any name with `&` in it hit this. The embedder now unescapes
+  entities before matching
+- Measured on the failing project after the fix: 11 of 11 references embedded, and the output
+  renders in stock 1.3 identical to the file-based version, 12241665 frames, peak 26027
+
+A clip is a copy
+
+- A sample used by eleven clips is written eleven times, because a clip reads only its own `data`
+  attribute (SampleClip.cpp) and the format has no way for one clip to point at another's buffer.
+  An 8.2 MB wav across eleven clips is 229 MB of XML, 108 MB compressed. Renders in 17 seconds
+
+SlicerT
+
+- `slicert` added to the covered elements. Stock 1.3 SlicerT reads `sampledata`
+  (SlicerT.cpp line 363), and the embedder skipped those projects with no error
+
+The size cap
+
+- The 300 MB cap is gone. The check now sits at 500 MB of text, under the V8 string limit of
+  about 536 M characters, which is the point past which the output cannot exist as one string in
+  any Chromium browser or Node. The error names the heaviest sample and points at the native
+  `lmms embedsamples` command, which has no such limit
+
+Samples only
+
+- The embed path no longer strips `midicontrollers` nodes or relabels the header. Version
+  compatibility is a separate problem from embedding and the two were tangled in one pass
+- 1.2.2 measured anyway: the embedded project renders there too, mean within 0.07% of the
+  file-based version. The drumsynth tracks are silent in BOTH, because 1.2 reads the
+  `factorysample:` prefix a 1.3 save writes as a literal filename. Not an embedding effect
+
+Checked across project shapes, all through the real code path in the browser, all rendered with
+stock 1.3 against file-based baselines
+
+- three samples in one project, referenced as `usergig:`, a Windows path and a bare relative
+  path: frames and peak identical, mean within 0.08%
+- a reference that exists nowhere: kept its `src`, named in the report, the other ten embedded
+- uncompressed `.mmp` input: same result as `.mmpz`
+- no user path survives in any output. The only `src` left is `factorysample:`, which a stock
+  install resolves
+
+
 ## 08-10-2026
 
 Audio formats

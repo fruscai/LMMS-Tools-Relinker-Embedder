@@ -92,6 +92,7 @@ select:focus{outline:none;border-color:var(--accent)}
 
 .samples-box{background:var(--panel);border:1px solid var(--border-soft);
   border-radius:var(--radius);padding:15px 17px}
+.gig-line{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
 .samples-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
 .samples-found{color:var(--ok);font-weight:600}
 .samples-none{color:var(--warn);font-weight:600}
@@ -225,11 +226,16 @@ td.file{white-space:normal;word-break:break-all;
     <div class="samples-box">
       <div class="samples-line">
         <span id="samples-status" class="samples-none">no source selected yet</span>
-        <button type="button" id="pick-samples" class="ghost">Add a sample folder…</button>
+        <button type="button" id="pick-samples" class="ghost">Add another folder…</button>
+      </div>
+      <div class="samples-line gig-line">
+        <span id="gig-status" class="samples-none">gig folder not connected</span>
+        <button type="button" id="connect-gig" class="ghost" hidden>Connect gig folder</button>
+        <button type="button" id="forget-gig" class="ghost" hidden>Forget</button>
       </div>
       <p class="hint" style="margin-top:8px">
-        Audio in the source is found automatically. Add your <code>gig</code> folder if the
-        samples are stored elsewhere. Matched by filename.
+        Audio in the source is found automatically. Connect your <code>gig</code> folder once
+        and it is reused every time after. Matched by filename.
       </p>
     </div>
   </section>
@@ -480,20 +486,41 @@ function buildZip(records) {
 
 /* ---------- LMMS reference handling ---------- */
 
-const SAMPLE_NODES = ['audiofileprocessor', 'sampleclip', 'sampletco'];
+const SAMPLE_NODES = ['audiofileprocessor', 'sampleclip', 'sampletco', 'slicert'];
 // Prefixes carry no slash, so a naive basename() would keep them and miss.
 const LMMS_PREFIX = /^(factorysample|usersample|usergig|usersoundfont|local):/i;
 const AUDIO_EXT = /\.(wav|aiff?|flac|ogg|mp3|raw)$/i;
 
+/* src comes straight out of the raw XML, so a sample called "R&B Piano.wav" is
+   sitting in the attribute as "R&amp;B Piano.wav". Matching that against the
+   filename on disk finds nothing and the project embeds nothing, while the
+   report names a file that looks identical to the one in the folder. */
+const xmlUnescape = (v) => String(v)
+  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+  .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+  .replace(/&amp;/g,'&');
+
 const sampleNameOf = (src) => {
-  const c = src.replace(/\\/g, '/').replace(LMMS_PREFIX, '');
+  const c = xmlUnescape(src).replace(/\\/g, '/').replace(LMMS_PREFIX, '');
   const i = c.lastIndexOf('/');
   return i === -1 ? c : c.slice(i + 1);
 };
-const isFactory = (src) => /^factorysample:/i.test(src);
+/* LMMS stores its bundled samples either with the factorysample: prefix or as
+   a bare path under one of its sample folders, such as drums/kick_hiphop01.ogg.
+   Only the prefixed form was recognised, so the bare form was treated as a
+   user sample and reported missing. */
+const FACTORY_DIRS = /^(basses|bassloops|beats|drums|drumsynth|effects|instruments|latin|misc|shapes|stringsnpads|waveforms)\//i;
+const isFactory = (src) => {
+  if (/^factorysample:/i.test(src)) return true;
+  const c = String(src).replace(/\\/g, '/');
+  if (/^[a-z]:\//i.test(c) || c.startsWith('/') || LMMS_PREFIX.test(c)) return false;
+  return FACTORY_DIRS.test(c);
+};
 const isProjectFile = (n) => /\.(mmpz|mmp)(\.bak)?$/i.test(n);
 const isCompressedName = (n) => /\.mmpz(\.bak)?$/i.test(n);
 const xmlEscape = (v) => v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 
 const NODE_RE = new RegExp(`<(?:${SAMPLE_NODES.join('|')})\\b[^>]*>`, 'g');
 const TAG_RE  = new RegExp(`<(${SAMPLE_NODES.join('|')})\\b([^>]*?)\\s*src="([^"]*)"([^>]*)>`, 'g');
@@ -559,7 +586,8 @@ function makeCompat12(xml) {
 /* ---------- app state ---------- */
 
 const state = { kind: null, label: '', items: [], samples: new Map(),
-                scope: 'all', scanned: null, output: null };
+                scope: 'all', scanned: null, output: null,
+                gigHandle: null, gigCount: 0 };
 
 const $ = (id) => document.getElementById(id);
 const setStatus = (m, tone = '') => { $('status').textContent = m || ''; $('status').className = 'status' + (tone ? ' ' + tone : ''); };
@@ -567,13 +595,119 @@ const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 
 function addSample(name, getBytes) {
-  if (!AUDIO_EXT.test(name)) return;
+  if (!AUDIO_EXT.test(name) || isMacJunk(name)) return;
   const base = name.split('/').pop();
   if (!state.samples.has(base)) state.samples.set(base, getBytes);
   const lower = base.toLowerCase();
   if (!state.samples.has(lower)) state.samples.set(lower, getBytes);
 }
 const findSample = (name) => state.samples.get(name) || state.samples.get(name.toLowerCase()) || null;
+
+/* Re-registers the audio that came in with the source, after the map is cleared. */
+function reindexSource() {
+  for (const it of state.items) if (!it.isDir) addSample(it.name, it.getBytes);
+}
+
+/* ---------- remembered gig folder ---------- */
+
+/* A page cannot open a folder on its own, so the handle from one pick is kept
+   in IndexedDB. Chrome hands it back on the next visit and the folder is read
+   again without a second prompt, as long as permission still stands. */
+const GIG_DB = 'lmms-tools', GIG_STORE = 'handles', GIG_KEY = 'gig-folder';
+
+const idb = () => new Promise((res, rej) => {
+  const r = indexedDB.open(GIG_DB, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(GIG_STORE);
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+const idbPut = async (k, v) => { const db = await idb(); return new Promise((res, rej) => {
+  const t = db.transaction(GIG_STORE, 'readwrite');
+  t.objectStore(GIG_STORE).put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); };
+const idbGet = async (k) => { const db = await idb(); return new Promise((res, rej) => {
+  const t = db.transaction(GIG_STORE, 'readonly');
+  const q = t.objectStore(GIG_STORE).get(k);
+  q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); };
+const idbDel = async (k) => { const db = await idb(); return new Promise((res, rej) => {
+  const t = db.transaction(GIG_STORE, 'readwrite');
+  t.objectStore(GIG_STORE).delete(k); t.oncomplete = res; t.onerror = () => rej(t.error); }); };
+
+async function indexDirectory(handle) {
+  let n = 0;
+  for await (const [name, h] of handle.entries()) {
+    if (h.kind === 'directory') { n += await indexDirectory(h); continue; }
+    if (!AUDIO_EXT.test(name)) continue;
+    addSample(name, async () => new Uint8Array(await (await h.getFile()).arrayBuffer()));
+    n++;
+  }
+  return n;
+}
+
+async function useGigHandle(handle, remember) {
+  state.gigHandle = handle;
+  const n = await indexDirectory(handle);
+  state.gigCount = n;
+  if (remember) { try { await idbPut(GIG_KEY, handle); } catch {} }
+  paintGig();
+  state.scanned = null;
+  refreshSamples(); refresh();
+  return n;
+}
+
+function paintGig() {
+  const el = $('gig-status');
+  if (state.gigHandle) {
+    el.textContent = `${state.gigHandle.name} — ${state.gigCount} audio file(s)`;
+    el.className = 'samples-found';
+    $('connect-gig').hidden = true;
+    $('forget-gig').hidden = false;
+  } else {
+    el.textContent = CAN_STREAM ? 'gig folder not connected' : 'gig folder needs a Chromium browser';
+    el.className = 'samples-none';
+    $('connect-gig').hidden = !CAN_STREAM;
+    $('forget-gig').hidden = true;
+  }
+}
+
+$('connect-gig').addEventListener('click', async () => {
+  try {
+    const h = await window.showDirectoryPicker({ mode: 'read' });
+    const n = await useGigHandle(h, true);
+    setStatus(n ? `gig folder connected, ${n} audio file(s)` : 'That folder has no audio files.',
+      n ? '' : 'error');
+  } catch { /* picker dismissed */ }
+});
+
+$('forget-gig').addEventListener('click', async () => {
+  state.gigHandle = null; state.gigCount = 0;
+  try { await idbDel(GIG_KEY); } catch {}
+  state.samples.clear(); state.scanned = null;
+  paintGig(); reindexSource(); refreshSamples(); refresh();
+  setStatus('gig folder forgotten');
+});
+
+/* Restores the folder picked on an earlier visit. Chrome keeps the grant for
+   the origin, so this is silent when the permission is still in force. */
+(async () => {
+  paintGig();
+  if (!CAN_STREAM) return;
+  try {
+    const h = await idbGet(GIG_KEY);
+    if (!h) return;
+    const perm = await h.queryPermission({ mode: 'read' });
+    if (perm === 'granted') { await useGigHandle(h, false); return; }
+    $('gig-status').textContent = `${h.name} — click to reconnect`;
+    $('connect-gig').hidden = false;
+    $('connect-gig').textContent = 'Reconnect gig folder';
+    $('connect-gig').onclick = async () => {
+      if (await h.requestPermission({ mode: 'read' }) === 'granted') {
+        $('connect-gig').textContent = 'Connect gig folder';
+        $('connect-gig').onclick = null;
+        await useGigHandle(h, true);
+      }
+    };
+  } catch {}
+})();
 
 function refreshSamples() {
   const n = new Set([...state.samples.keys()].map((k) => k.toLowerCase())).size;
@@ -595,7 +729,15 @@ function refreshProjectPicker() {
   sel.innerHTML = ranked.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
 }
 
+/* macOS writes an AppleDouble sidecar for every file when a folder is zipped in
+   Finder: a __MACOSX/ copy whose name starts with "._". They carry the .mmpz
+   extension but hold no project, so they are dropped from the source list. */
+const isMacJunk = (p) => {
+  const s = String(p).replace(/\\/g, '/');
+  return /(^|\/)__MACOSX\//.test(s) || /(^|\/)\._/.test(s) || /(^|\/)\.DS_Store$/.test(s);
+};
 function setSource(kind, label, items) {
+  items = items.filter((i) => !isMacJunk(i.name));
   state.kind = kind; state.label = label; state.items = items; state.scanned = null;
   const projects = items.filter((i) => isProjectFile(i.name) && !i.isDir).length;
   $('source-path').textContent = `${label} (${projects} LMMS file(s), ${items.length} file(s) total)`;
@@ -607,6 +749,7 @@ function setSource(kind, label, items) {
 
 $('clear-source').addEventListener('click', () => {
   state.items = []; state.samples.clear(); state.scanned = null;
+  if (state.gigHandle) { indexDirectory(state.gigHandle).then((n) => { state.gigCount = n; paintGig(); refreshSamples(); }); }
   $('source-chip').hidden = true; $('dropzone').hidden = false;
   $('scan-panel').hidden = true; $('result-panel').hidden = true;
   refreshSamples(); setStatus(''); refresh();
@@ -784,8 +927,7 @@ $('scan-btn').addEventListener('click', async () => {
       advice.hidden = false;
     } else if (embeddable) {
       advice.className = 'advice good';
-      advice.innerHTML = 'All samples found.' +
-        (ccTotal ? ` Will also clear ${ccTotal} <code>midicontrollers</code> node(s) so it opens cleanly in LMMS 1.2.` : '');
+      advice.innerHTML = 'All samples found.';
       advice.hidden = false;
     } else advice.hidden = true;
 
@@ -804,23 +946,36 @@ $('scan-btn').addEventListener('click', async () => {
 
 /* ---------- embed ---------- */
 
+/* Not a policy cap. A JavaScript string tops out at about 536 M characters
+   (the V8 limit, Chrome and Node alike), and the whole project has to exist as
+   one string to be written. Estimate first, so a project past the ceiling gets
+   a sentence naming the heavy sample instead of an opaque RangeError halfway
+   through. Each clip using a sample is a full copy of it, because LMMS gives a
+   clip no way to point at another clip's buffer; an instrument is two copies
+   (sampledata for 1.3, srcdata for the 1.2 loader bug). */
+const MAX_XML_CHARS = 500 * 1024 * 1024;
 
-/* Browsers cap how long a single string can be. Doubling the payload for 1.2
-   compatibility doubles it again, so a long sample across many instruments can
-   blow that ceiling. Estimate first and say so plainly rather than dying with
-   a RangeError halfway through. */
-const MAX_XML_CHARS = 300 * 1024 * 1024;
-
-function checkPayloadSize(xml, cache, refCounts) {
+function checkPayloadSize(xml, cache) {
   let total = xml.length;
-  for (const [name, count] of refCounts) {
+  const per = new Map();
+  for (const tag of xml.match(NODE_RE) || []) {
+    const m = tag.match(/\bsrc="([^"]*)"/);
+    if (!m || !m[1] || isFactory(m[1])) continue;
+    const name = sampleNameOf(m[1]);
     const b64 = cache.get(name);
-    if (b64) total += b64.length * count * 2;   // sampledata + srcdata
+    if (!b64) continue;
+    const copies = /^<(sampleclip|sampletco)\b/.test(tag) ? 1 : 2;
+    total += b64.length * copies;
+    per.set(name, (per.get(name) || 0) + b64.length * copies);
   }
   if (total > MAX_XML_CHARS) {
+    const worst = [...per.entries()].sort((a, b) => b[1] - a[1])[0];
     throw new Error(
-      `Project would reach ${(total / 1048576).toFixed(0)} MB of text, past what a browser ` +
-      `can hold. Use shorter samples, or fewer instruments sharing one long sample.`
+      `Project would reach ${(total / 1048576).toFixed(0)} MB of text, past the ${
+      (MAX_XML_CHARS / 1048576).toFixed(0)} MB a browser can hold as one string. ` +
+      `${worst ? `${worst[0]} accounts for ${(worst[1] / 1048576).toFixed(0)} MB, ` +
+      `copied once into every clip that uses it. ` : ''}` +
+      `The native build has no such ceiling: lmms embedsamples <in> <out>.`
     );
   }
   return total;
@@ -840,13 +995,7 @@ async function embedXml(xml, cache, counters) {
     } catch { cache.set(n, null); }
   }
 
-  const refCounts = new Map();
-  for (const s of collectRefs(xml)) {
-    if (!s || isFactory(s)) continue;
-    const n = sampleNameOf(s);
-    refCounts.set(n, (refCounts.get(n) || 0) + 1);
-  }
-  checkPayloadSize(xml, cache, refCounts);
+  counters.projected = checkPayloadSize(xml, cache);
 
   return xml.replace(TAG_RE, (whole, tag, before, src, after) => {
     if (!src) { counters.empty++; return whole; }
@@ -855,12 +1004,19 @@ async function embedXml(xml, cache, counters) {
     if (!b64) { counters.missing++; return whole; }
     counters.embedded++;
     const selfClosing = /\/\s*$/.test(after);
-    const attrs = `${before} ${after.replace(/\/\s*$/, '')}`
-      .replace(/\s*\b(sampledata|srcdata)="[^"]*"/g, '').replace(/\s+/g, ' ').trim();
+    let attrs = `${before} ${after.replace(/\/\s*$/, '')}`
+      .replace(/\s*\b(sampledata|srcdata|data)="[^"]*"/g, '').replace(/\s+/g, ' ').trim();
+    // A sample clip on a Sample track reads "data" beside "sample_rate".
+    // sampledata belongs to instruments only, so a clip given sampledata and
+    // no src loads nothing and the track is silent with no error.
+    const isClip = tag === 'sampleclip' || tag === 'sampletco';
+    if (isClip && !/\bsample_rate="/.test(attrs)) { attrs += ' sample_rate="44100"'; }
     // LMMS 1.2 checks "sampledata" but reads "srcdata" (bug in stable-1.2), so
     // write both. 1.3 reads sampledata and ignores srcdata. Measured: with
     // sampledata alone, 1.2.2 renders silence.
-    const payload = `sampledata="${xmlEscape(b64)}" srcdata="${xmlEscape(b64)}"`;
+    const payload = isClip
+      ? `data="${xmlEscape(b64)}"`
+      : `sampledata="${xmlEscape(b64)}" srcdata="${xmlEscape(b64)}"`;
     return `<${tag} ${attrs} ${payload}${selfClosing ? '/' : ''}>`;
   });
 }
@@ -879,7 +1035,7 @@ $('run-btn').addEventListener('click', async () => {
   $('progress').hidden = false;
 
   const cache = new Map();
-  const counters = { embedded: 0, missing: 0, empty: 0, factory: 0, ccRemoved: 0, relabelled: 0, blocked13: 0 };
+  const counters = { embedded: 0, missing: 0, empty: 0, factory: 0 };
   const chosen = new Set(targets().map((t) => t.name));
   const records = [];
   let written = 0, failed = 0, bytesOut = 0;
@@ -915,13 +1071,8 @@ $('run-btn').addEventListener('click', async () => {
             throw new Error('src left alongside sampledata');
           }
 
-          // Always make the result openable in LMMS 1.2 where that is possible.
-          const compat = makeCompat12(updated);
-          updated = compat.xml;
-          counters.ccRemoved += compat.removed;
-          if (compat.headerChanged) counters.relabelled += 1;
-          if (compat.blockers.length) counters.blocked13 += 1;
-
+          // Samples only. Version compatibility (midicontrollers stripping,
+          // header relabelling) is deliberately not this tool's job.
           const outBytes = te.encode(updated);
           await writeOut(item.name, compressed ? await compressMmpz(outBytes) : outBytes);
           written++;
@@ -955,7 +1106,6 @@ $('run-btn').addEventListener('click', async () => {
       stat(counters.embedded, 'samples written in', 'accent'),
       stat(counters.missing, 'missing', counters.missing ? 'bad' : ''),
       stat(state.items.length - written, 'files copied through'),
-      ...(counters.ccRemoved ? [stat(counters.ccRemoved, 'LMMS 1.2 fixes', 'good')] : []),
       stat(mb(bytesOut), 'total size'),
     ].join('');
     $('result-note').textContent = counters.missing
