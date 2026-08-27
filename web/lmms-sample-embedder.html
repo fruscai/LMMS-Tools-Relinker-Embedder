@@ -73,18 +73,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
   letter-spacing:.6px;margin-bottom:2px}
 .chip-body code{color:var(--accent-2);word-break:break-all}
 
-.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:780px){.mode-grid{grid-template-columns:1fr}}
-.mode-card{text-align:left;display:flex;flex-direction:column;gap:7px;padding:16px 17px;
-  border-radius:var(--radius);background:var(--panel);border:1.5px solid var(--border);
-  color:var(--text);cursor:pointer;font-family:inherit;
-  transition:border-color .15s,background .15s}
-.mode-card:hover{border-color:#544a68;background:var(--panel-2)}
-.mode-card.selected{border-color:var(--accent);background:rgba(131,81,212,.1)}
-.mode-title{font-size:14px;font-weight:650}
-.mode-card.selected .mode-title{color:var(--accent-2)}
-.mode-body{font-size:12.5px;color:var(--text-faint);line-height:1.55}
-.pick-row{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 select{background:#17191c;color:var(--text);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 11px;font-family:ui-monospace,Menlo,monospace;
   font-size:12.5px;max-width:100%}
@@ -196,20 +184,22 @@ td.file{white-space:normal;word-break:break-all;
 
   <!-- 1 : source -->
   <section class="step">
-    <div class="step-head"><span class="step-num">1</span><h2>Choose a folder or ZIP</h2></div>
+    <div class="step-head"><span class="step-num">1</span><h2>Choose a project file, folder or ZIP</h2></div>
     <div id="dropzone" class="dropzone">
       <div class="dropzone-inner">
         <div class="drop-icon" aria-hidden="true"><span class="folder"></span></div>
-        <p class="drop-title">Drop a project folder or ZIP here</p>
+        <p class="drop-title">Drop a project file, folder or ZIP here</p>
         <p class="drop-sub">
-          Folder or ZIP only
+          A single .mmpz or .mmp, a folder, or a ZIP
         </p>
         <div class="button-row">
+          <button type="button" id="pick-file">Choose project file</button>
           <button type="button" id="pick-folder">Choose folder</button>
           <button type="button" id="pick-zip">Choose ZIP</button>
         </div>
       </div>
     </div>
+    <p id="drop-error" class="status error" style="margin:9px 0 0" hidden></p>
     <div id="source-chip" class="source-chip" hidden>
       <span class="chip-icon"></span>
       <div class="chip-body"><span class="chip-label">Selected</span><code id="source-path"></code></div>
@@ -217,55 +207,31 @@ td.file{white-space:normal;word-break:break-all;
     </div>
     <input id="file-folder" type="file" webkitdirectory directory multiple hidden />
     <input id="file-zip" type="file" accept=".zip" hidden />
+    <input id="file-project" type="file" accept=".mmpz,.mmp" hidden />
     <input id="file-samples" type="file" webkitdirectory directory multiple hidden />
   </section>
 
-  <!-- 2 : samples -->
+  <!-- samples -->
   <section class="step">
-    <div class="step-head"><span class="step-num">2</span><h2>Where are the audio files?</h2></div>
     <div class="samples-box">
       <div class="samples-line">
-        <span id="samples-status" class="samples-none">no source selected yet</span>
-        <button type="button" id="pick-samples" class="ghost">Add another folder…</button>
-      </div>
-      <div class="samples-line gig-line">
         <span id="gig-status" class="samples-none">gig folder not connected</span>
         <button type="button" id="connect-gig" class="ghost" hidden>Connect gig folder</button>
         <button type="button" id="forget-gig" class="ghost" hidden>Forget</button>
       </div>
+      <div class="samples-line gig-line">
+        <span id="samples-status" class="samples-none">no source selected yet</span>
+        <button type="button" id="pick-samples" class="ghost">Add a sample folder…</button>
+      </div>
       <p class="hint" style="margin-top:8px">
-        Audio in the source is found automatically. Connect your <code>gig</code> folder once
-        and it is reused every time after. Matched by filename.
+        Only needed when a sample is not in the gig folder. Matched by filename.
       </p>
-    </div>
-  </section>
-
-  <!-- 3 : scope -->
-  <section class="step">
-    <div class="step-head"><span class="step-num">3</span><h2>What should be embedded?</h2></div>
-    <div class="mode-grid">
-      <button type="button" class="mode-card selected" data-scope="all">
-        <span class="mode-title">Everything</span>
-        <span class="mode-body">
-          Every project and autosave
-        </span>
-      </button>
-      <button type="button" class="mode-card" data-scope="one">
-        <span class="mode-title">Final project only</span>
-        <span class="mode-body">
-          One project. Everything else is copied unchanged
-        </span>
-      </button>
-    </div>
-    <div id="pick-project" class="pick-row" hidden>
-      <span class="chip-label" style="margin:0">Project</span>
-      <select id="project-select"></select>
     </div>
   </section>
 
   <!-- 4 : run -->
   <section class="step">
-    <div class="step-head"><span class="step-num">4</span><h2>Check, then embed</h2></div>
+    <div class="step-head"><span class="step-num">2</span><h2>Check, then embed</h2></div>
     <div class="actions">
       <button id="scan-btn" type="button" class="primary" disabled>Check</button>
       <button id="run-btn" type="button" class="go" disabled>Embed &amp; save</button>
@@ -586,7 +552,7 @@ function makeCompat12(xml) {
 /* ---------- app state ---------- */
 
 const state = { kind: null, label: '', items: [], samples: new Map(),
-                scope: 'all', scanned: null, output: null,
+                scanned: null, output: null,
                 gigHandle: null, gigCount: 0 };
 
 const $ = (id) => document.getElementById(id);
@@ -717,18 +683,6 @@ function refreshSamples() {
   else { el.textContent = `${n} audio file(s) available`; el.className = 'samples-found'; }
 }
 
-function refreshProjectPicker() {
-  const projects = state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
-  const sel = $('project-select');
-  // Prefer something that looks like a final version, else the last by name.
-  const ranked = [...projects].sort((a, b) => {
-    const score = (n) => (/final/i.test(n) ? 2 : 0) + (/v\d+/i.test(n) ? 1 : 0);
-    const d = score(b.name) - score(a.name);
-    return d !== 0 ? d : a.name.localeCompare(b.name);
-  });
-  sel.innerHTML = ranked.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
-}
-
 /* macOS writes an AppleDouble sidecar for every file when a folder is zipped in
    Finder: a __MACOSX/ copy whose name starts with "._". They carry the .mmpz
    extension but hold no project, so they are dropped from the source list. */
@@ -736,6 +690,8 @@ const isMacJunk = (p) => {
   const s = String(p).replace(/\\/g, '/');
   return /(^|\/)__MACOSX\//.test(s) || /(^|\/)\._/.test(s) || /(^|\/)\.DS_Store$/.test(s);
 };
+const setDropError = (m) => { const el = $('drop-error'); el.textContent = m || ''; el.hidden = !m; };
+
 function setSource(kind, label, items) {
   items = items.filter((i) => !isMacJunk(i.name));
   state.kind = kind; state.label = label; state.items = items; state.scanned = null;
@@ -744,7 +700,8 @@ function setSource(kind, label, items) {
   $('source-chip').hidden = false;
   $('dropzone').hidden = true;
   $('scan-panel').hidden = true; $('result-panel').hidden = true;
-  refreshSamples(); refreshProjectPicker(); refresh();
+  setDropError('');
+  refreshSamples(); refresh();
 }
 
 $('clear-source').addEventListener('click', () => {
@@ -786,6 +743,20 @@ function useFolder(files, label) {
   setStatus('');
 }
 
+function useProjectFile(f) {
+  if (!isProjectFile(f.name)) { setDropError('That is not an LMMS project file (.mmpz or .mmp).'); return; }
+  const items = [{ name: f.name, isDir: false,
+    times: dosNow(new Date(f.lastModified)),
+    getBytes: async () => new Uint8Array(await f.arrayBuffer()),
+    passthrough: null, file: f }];
+  setSource('file', f.name, items);
+  setStatus('');
+}
+
+$('pick-file').addEventListener('click', () => $('file-project').click());
+$('file-project').addEventListener('change', (e) => {
+  if (e.target.files[0]) useProjectFile(e.target.files[0]);
+});
 $('pick-folder').addEventListener('click', () => $('file-folder').click());
 $('pick-zip').addEventListener('click', () => $('file-zip').click());
 $('pick-samples').addEventListener('click', () => $('file-samples').click());
@@ -796,7 +767,7 @@ $('file-folder').addEventListener('change', (e) => {
   useFolder(e.target.files, root);
 });
 $('file-zip').addEventListener('change', (e) => {
-  if (e.target.files[0]) useZip(e.target.files[0]).catch((err) => setStatus(err.message, 'error'));
+  if (e.target.files[0]) useZip(e.target.files[0]).catch((err) => setDropError(err.message));
 });
 $('file-samples').addEventListener('change', (e) => {
   let added = 0;
@@ -818,30 +789,15 @@ $('file-samples').addEventListener('change', (e) => {
 document.addEventListener('drop', async (e) => {
   const f = e.dataTransfer?.files[0];
   if (!f) return;
-  if (/\.zip$/i.test(f.name)) { try { await useZip(f); } catch (err) { setStatus(err.message, 'error'); } }
-  else setStatus('Drop a ZIP file, or use the Choose folder button.', 'error');
+  if (/\.zip$/i.test(f.name)) { try { await useZip(f); } catch (err) { setDropError(err.message); } }
+  else if (isProjectFile(f.name)) useProjectFile(f);
+  else setDropError('Drop a .mmpz, .mmp or ZIP file, or use the Choose folder button.');
 });
 
-/* ---------- scope ---------- */
-
-for (const card of document.querySelectorAll('.mode-card')) {
-  card.addEventListener('click', () => {
-    document.querySelectorAll('.mode-card').forEach((c) => c.classList.remove('selected'));
-    card.classList.add('selected');
-    state.scope = card.dataset.scope;
-    state.scanned = null;
-    $('pick-project').hidden = state.scope !== 'one';
-    $('scan-panel').hidden = true; $('result-panel').hidden = true;
-    refresh();
-  });
-}
-$('project-select').addEventListener('change', () => { state.scanned = null; refresh(); });
-
+/* Every project in the source gets embedded. One final project is one
+   dropped .mmpz. */
 function targets() {
-  const projects = state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
-  if (state.scope === 'all') return projects;
-  const chosen = $('project-select').value;
-  return projects.filter((p) => p.name === chosen);
+  return state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
 }
 
 function refresh() {
@@ -1022,7 +978,7 @@ async function embedXml(xml, cache, counters) {
 }
 
 $('run-btn').addEventListener('click', async () => {
-  const outName = `${state.label.replace(/\.zip$/i, '')}-EMBEDDED`;
+  const outName = `${state.label.replace(/\.(zip|mmpz|mmp)$/i, '')}-EMBEDDED`;
   let dirHandle = null;
 
   if (CAN_STREAM) {

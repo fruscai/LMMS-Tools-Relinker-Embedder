@@ -31,8 +31,8 @@ will change.
 **`web/lmms-sample-embedder.html`** — writes the audio INTO the project file, so there's nothing
 left to resolve. No sample folder, no `resources` folder, no path to break. Writes both `sampledata`
 and `srcdata`, so the audio plays in 1.2 and 1.3 alike. The project body still has to be 1.2 shaped
-for 1.2 to open it at all, which means authored there rather than round-tripped through 1.3. Embed
-everything, or just one final project.
+for 1.2 to open it at all, which means authored there rather than round-tripped through 1.3. Takes
+a single `.mmpz` or `.mmp`, a folder, or a ZIP; every project in the source gets embedded.
 
 **`web/lmms-tools.html`** — both tools in one file, on two tabs. They are independent: Relink for a
 whole folder of projects, Embed for the one final project going out. Neither tab needs the other to

@@ -2,6 +2,16 @@
 
 ## 08-27-2026
 
+Single file input and less UI
+
+- A single `.mmpz` or `.mmp` can now be dropped or picked directly. Before this the smallest
+  input was a folder or a ZIP
+- The scope step is gone. Every project in the source gets embedded, and one final project is one
+  dropped file
+- The samples step lost its number and its explanation. Gig folder line first, then a sample
+  folder button, with one line: only needed when a sample is not in the gig folder
+- Source errors show under the dropzone instead of next to the run buttons
+
 Escaped sample names
 
 - BIG ONE: **sample names come out of the raw XML still escaped.** A project referencing
