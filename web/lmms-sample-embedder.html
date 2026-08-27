@@ -988,13 +988,6 @@ async function embedXml(xml, cache, counters) {
 
 $('run-btn').addEventListener('click', async () => {
   const outName = `${state.label.replace(/\.(zip|mmpz|mmp)$/i, '')}-EMBEDDED`;
-  let dirHandle = null;
-
-  if (CAN_STREAM) {
-    try {
-      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    } catch { setStatus('cancelled', ''); return; }
-  }
 
   setStatus('embedding…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
   $('progress').hidden = false;
@@ -1005,18 +998,11 @@ $('run-btn').addEventListener('click', async () => {
   const records = [];
   let written = 0, failed = 0, bytesOut = 0;
 
+  const outFiles = [];
   const writeOut = async (relPath, bytes) => {
     bytesOut += bytes.length;
-    if (dirHandle) {
-      const parts = `${outName}/${relPath}`.split('/').filter(Boolean);
-      let dir = dirHandle;
-      for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
-      const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
-      const w = await fh.createWritable();
-      await w.write(bytes); await w.close();
-    } else {
-      records.push(await makeRecord(`${outName}/${relPath}`, bytes));
-    }
+    outFiles.push({ relPath, bytes });
+    records.push(await makeRecord(`${outName}/${relPath}`, bytes));
   };
 
   try {
@@ -1054,17 +1040,22 @@ $('run-btn').addEventListener('click', async () => {
       if (i % 3 === 0) { setStatus(`embedding… ${i + 1} of ${state.items.length}`); await new Promise(r => setTimeout(r)); }
     }
 
-    if (!dirHandle) {
+    // One project in, one file out. Anything more is a ZIP. Either way it goes
+    // through the browser's own download, which lands in Downloads with no
+    // folder dialog: Chrome refuses to grant a page write access to Downloads
+    // and some other folders, so asking was a dead end.
+    if (outFiles.length === 1) {
+      const ext = (outFiles[0].relPath.match(/\.(mmpz|mmp)(\.bak)?$/i) || ['.mmpz'])[0];
+      state.output = new Blob([outFiles[0].bytes]);
+      $('output-name').textContent = `${outName}${ext.startsWith('.') ? ext : '.' + ext}`;
+    } else {
       setStatus('building archive…');
       state.output = buildZip(records);
-      $('download-btn').hidden = false;
       $('output-name').textContent = `${outName}.zip`;
-      $('result-hint').textContent = '';
-    } else {
-      $('download-btn').hidden = true;
-      $('output-name').textContent = `${outName}/  (written to the selected folder)`;
-      $('result-hint').textContent = '';
     }
+    $('download-btn').hidden = false;
+    $('result-hint').textContent = '';
+    $('download-btn').click();
 
     $('result-summary').innerHTML = [
       stat(written, 'projects embedded', 'good'),

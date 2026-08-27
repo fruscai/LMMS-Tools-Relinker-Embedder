@@ -4,7 +4,7 @@
 
 Single file input and less UI
 
-Three failures found by using it in Safari
+Three failures found by using it outside a dev setup
 
 - The gig folder button was hidden outside Chromium, with a line saying a Chromium browser is
   needed. Folder PICKING works in every browser; only the remembered connection is
@@ -15,6 +15,17 @@ Three failures found by using it in Safari
 - The missing-sample message said "Add that folder in step 2" after the step was removed, and
   counted references, "2 missing" for one file used twice. It now counts samples and names the
   buttons that exist
+
+Saving through the folder dialog was a dead end
+
+- Chrome refuses to grant a page write access to Downloads, the home folder and other system
+  folders: "can't open this folder because it contains system files". From a file:// page the
+  refusal covered every folder tried
+- The output now goes through the browser's own download, the same way the relinker's does. One
+  project in is one `-EMBEDDED.mmpz` file out; a folder or ZIP in is one ZIP out. The download
+  starts on its own when the embed finishes
+- The folder-picker write path is removed rather than kept as an option
+
 
 
 - A single `.mmpz` or `.mmp` can now be dropped or picked directly. Before this the smallest
