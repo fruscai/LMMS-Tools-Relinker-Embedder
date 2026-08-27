@@ -628,14 +628,16 @@ function paintGig() {
     $('connect-gig').hidden = true;
     $('forget-gig').hidden = false;
   } else {
-    el.textContent = CAN_STREAM ? 'gig folder not connected' : 'gig folder needs a Chromium browser';
+    el.textContent = CAN_STREAM ? 'gig folder not connected'
+      : 'gig folder not loaded. This browser forgets the connection, so pick the folder each visit';
     el.className = 'samples-none';
-    $('connect-gig').hidden = !CAN_STREAM;
+    $('connect-gig').hidden = false;
     $('forget-gig').hidden = true;
   }
 }
 
 $('connect-gig').addEventListener('click', async () => {
+  if (!CAN_STREAM) { $('file-samples').click(); return; }
   try {
     const h = await window.showDirectoryPicker({ mode: 'read' });
     const n = await useGigHandle(h, true);
@@ -815,6 +817,12 @@ $('scan-btn').addEventListener('click', async () => {
   setStatus('checking…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
   $('progress').hidden = false; $('result-panel').hidden = true;
 
+  if (state.gigHandle) {
+    state.samples.clear(); reindexSource();
+    try { state.gigCount = await indexDirectory(state.gigHandle); } catch {}
+    paintGig(); refreshSamples();
+  }
+
   const rows = [];
   let refs = 0, embeddable = 0, missingTotal = 0, factoryTotal = 0, emptyTotal = 0;
   const missingNames = new Set();
@@ -871,10 +879,11 @@ $('scan-btn').addEventListener('click', async () => {
     const advice = $('scan-advice');
     if (missingTotal) {
       advice.className = 'advice bad';
-      advice.innerHTML = `<strong>${missingTotal} reference(s) were not located.</strong> ` +
-        `Not found: ` +
+      advice.innerHTML = `<strong>${missingNames.size} sample(s) not located</strong> ` +
+        `(${missingTotal} reference(s)). Not found: ` +
         `<code>${esc([...missingNames].slice(0,6).join(', '))}</code>` +
-        `${missingNames.size > 6 ? ', and others' : ''}. Add that folder in step 2.`;
+        `${missingNames.size > 6 ? ', and others' : ''}. ` +
+        `Connect the gig folder or add a sample folder above, then Check again.`;
       advice.hidden = false;
     } else if (blockers13.size) {
       advice.className = 'advice bad';

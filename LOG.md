@@ -4,6 +4,19 @@
 
 Single file input and less UI
 
+Three failures found by using it in Safari
+
+- The gig folder button was hidden outside Chromium, with a line saying a Chromium browser is
+  needed. Folder PICKING works in every browser; only the remembered connection is
+  Chromium-only. The button now shows everywhere and falls back to the plain folder input
+- ⚠️ Check never re-read a connected gig folder, so a file added to the folder after connecting
+  was invisible and Check kept reporting it missing with no way out short of reconnecting. Check
+  now re-indexes the gig folder every run
+- The missing-sample message said "Add that folder in step 2" after the step was removed, and
+  counted references, "2 missing" for one file used twice. It now counts samples and names the
+  buttons that exist
+
+
 - A single `.mmpz` or `.mmp` can now be dropped or picked directly. Before this the smallest
   input was a folder or a ZIP
 - The scope step is gone. Every project in the source gets embedded, and one final project is one
