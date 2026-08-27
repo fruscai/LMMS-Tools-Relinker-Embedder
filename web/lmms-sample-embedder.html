@@ -637,7 +637,7 @@ function paintGig() {
 }
 
 $('connect-gig').addEventListener('click', async () => {
-  if (!CAN_STREAM) { $('file-samples').click(); return; }
+  if (!CAN_STREAM) { state.gigPickPending = true; $('file-samples').click(); return; }
   try {
     const h = await window.showDirectoryPicker({ mode: 'read' });
     const n = await useGigHandle(h, true);
@@ -779,6 +779,16 @@ $('file-samples').addEventListener('change', (e) => {
     added++;
   }
   state.scanned = null;
+  // The gig button falls back to this input where the folder API is missing.
+  // Reflect the load on the gig line, or it looks like nothing happened.
+  if (state.gigPickPending) {
+    state.gigPickPending = false;
+    if (added) {
+      const root = (e.target.files[0]?.webkitRelativePath || '').split('/')[0] || 'folder';
+      $('gig-status').textContent = `${root} — ${added} audio file(s), this visit only`;
+      $('gig-status').className = 'samples-found';
+    }
+  }
   refreshSamples(); refresh();
   setStatus(added ? `added ${added} audio file(s)` : 'No audio files in that folder.',
     added ? '' : 'error');
