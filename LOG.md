@@ -2,6 +2,15 @@
 
 ## 08-27-2026
 
+The combined toolset rebuilt from the standalones
+
+- `web/lmms-tools.html` is now a small shell holding the two standalone pages base64-encoded in
+  iframes, regenerated from the current relinker and embedder. The previous committed version had
+  the two tools' code merged inline, which is why embedder fixes never reached it
+- Both panes verified inside the shell by driving their real buttons: the embedder scanned 11 of
+  11 and produced the 127.6 MB single-file download, the relinker found and rewrote all 9
+  occurrences of a Windows root with 0 left in the output ZIP
+
 Single file input and less UI
 
 Three failures found by using it outside a dev setup
