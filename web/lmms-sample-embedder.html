@@ -41,7 +41,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
   background:var(--panel);border:1px solid var(--border-soft);
   color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
-.howto strong{color:var(--text);display:block;margin-bottom:6px}
+.howto strong{color:var(--text)}
+.howto p{margin:0 0 10px}
+.howto p:last-child{margin-bottom:0}
+.howto b{color:var(--text)}
+.howto strong{display:block;margin:10px 0 6px}
+.howto strong:first-child{margin-top:0}
 .howto ol{margin:0;padding-left:20px}
 .howto li{margin-bottom:3px}
 .tool-note{padding:13px 16px;border-radius:var(--radius-sm);
@@ -189,19 +194,34 @@ td.file{white-space:normal;word-break:break-all;
   </div>
 
   <div class="howto">
-    <strong>How to use</strong>
+    <strong>About</strong>
+    <p>This tool processes files locally in your browser and does not upload anything. It writes
+    the audio of each sample into the LMMS project file itself, so the project plays on any
+    machine with stock LMMS 1.3 &mdash; no sample folders, no relinking, nothing extra to send.</p>
+    <strong>How to start</strong>
     <ol>
-      <li>Drop the final project file, a folder, or a ZIP. A single <code>.mmpz</code> is enough.</li>
-      <li>Connect the gig folder once. Chrome keeps the grant; Brave and Safari ask again each
-        visit, and the permission dialog says "upload" even though nothing leaves this machine.
-        Add a sample folder only when a sample is not in the gig folder.</li>
-      <li>Press Check. Nothing is written; the table lists each project, what will be embedded
-        and anything not found. Samples are matched by filename.</li>
-      <li>Press Embed &amp; save. The download starts on its own. One project in is one
-        <code>-EMBEDDED.mmpz</code> out; a folder or ZIP in is one ZIP.</li>
-      <li>The output opens in stock LMMS 1.3 with nothing to relink. A sample that could not be
-        read keeps its path and is named in the report, and the rest are still embedded.</li>
+      <li>Drag your final project file (<code>.mmpz</code> or <code>.mmp</code>) into the drop
+        zone below, or click the <b>Choose project file</b> button. A folder or ZIP of projects
+        works too.</li>
+      <li>Click the <b>Connect gig folder</b> button and select your LMMS gig folder
+        (<code>Documents/lmms/samples/gig</code>). Chrome remembers it after the first time.
+        Brave and Safari ask again on each visit, and their dialog says "upload" &mdash; nothing
+        actually leaves your machine.</li>
+      <li>If a sample lives somewhere other than the gig folder, click the
+        <b>Add a sample folder</b> button and select that folder as well. Samples are matched by
+        filename.</li>
+      <li>Click the <b>Check</b> button. This is a preview only &mdash; nothing is written yet.
+        The table shows each project, how many samples will be embedded, and names anything that
+        could not be found.</li>
+      <li>Click the <b>Embed &amp; save</b> button. The finished project downloads automatically:
+        one project gives you one <code>-EMBEDDED.mmpz</code> file, and a folder or ZIP gives you
+        one ZIP.</li>
+      <li>Send the downloaded file. It opens in stock LMMS 1.3 with everything playing.</li>
     </ol>
+    <p>&#9888;&#65039; A sample that cannot be found keeps its original path and is named in the
+    report. The rest still embed, and the project still opens.</p>
+    <p>&#9888;&#65039; Please do not modify this code or its functionality. If you find a bug,
+    DM me so I can verify it and work on a fix for everyone.</p>
   </div>
 
   <!-- 1 : source -->

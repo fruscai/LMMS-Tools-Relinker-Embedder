@@ -42,7 +42,12 @@ code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 .howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
   background:var(--panel);border:1px solid var(--border-soft);
   color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
-.howto strong{color:var(--text);display:block;margin-bottom:6px}
+.howto strong{color:var(--text)}
+.howto p{margin:0 0 10px}
+.howto p:last-child{margin-bottom:0}
+.howto b{color:var(--text)}
+.howto strong{display:block;margin:10px 0 6px}
+.howto strong:first-child{margin-top:0}
 .howto ol{margin:0;padding-left:20px}
 .howto li{margin-bottom:3px}
 .step{margin-bottom:26px}
@@ -218,18 +223,26 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
   <div id="unsupported" class="unsupported" hidden></div>
 
   <div class="howto">
-    <strong>How to use</strong>
+    <strong>About</strong>
+    <p>This tool processes files locally in your browser and does not upload anything. It repairs
+    LMMS projects whose samples stopped loading after a move to another machine or folder, by
+    rewriting the old path root to the correct one across every project at once.</p>
+    <strong>How to start</strong>
     <ol>
-      <li>Drop a ZIP, a folder, or project files. Every <code>.mmp</code> and <code>.mmpz</code>
-        inside is found, at any depth. Nothing is uploaded.</li>
-      <li>Type the broken root and the correct one. The before and after lines show the change on
-        a reference from your own project. LMMS stores Windows paths with forward slashes, so
-        both slash directions are matched.</li>
-      <li>Press Scan. Nothing is modified; the table shows which projects contain the path and
-        how many references would change.</li>
-      <li>Press Repair &amp; download. The originals are not touched. The ZIP holds the repaired
-        projects and a repair log.</li>
+      <li>Drag a folder or ZIP of projects into the drop zone below, or use the
+        <b>Choose ZIP</b>, <b>Choose folder</b> or <b>Choose projects</b> buttons. Every
+        <code>.mmp</code> and <code>.mmpz</code> inside is found, at any depth.</li>
+      <li>Type the broken root path (for example <code>C:/Users/You/Desktop/Audio/</code>) into
+        the first box and the correct one into the second. The before and after lines underneath
+        show the change applied to a real reference from your own project. Backslashes and
+        forward slashes both match, so paste the path either way.</li>
+      <li>Click the <b>Scan</b> button. This is a preview only &mdash; nothing is modified. The
+        table shows which projects contain the path and how many references will change.</li>
+      <li>Click the <b>Repair &amp; download</b> button. Your original files are never touched.
+        The ZIP that downloads holds the repaired projects plus a repair log (JSON and CSV).</li>
     </ol>
+    <p>&#9888;&#65039; Please do not modify this code or its functionality. If you find a bug,
+    DM me so I can verify it and work on a fix for everyone.</p>
   </div>
 
   <section class="step">

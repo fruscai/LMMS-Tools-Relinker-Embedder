@@ -4,6 +4,12 @@
 
 Instructions and the contact box
 
+- The first pass at the lists was clipped fragments and got rejected. Rewritten as full
+  sentences on the CS dashboard's pattern: an About paragraph, numbered steps that name each
+  button in bold, and the do-not-modify line. The combined file's contact is a bar fixed under
+  the panes, visible from either tab, since the panes fill the viewport and anything after them
+  in flow never shows
+
 - Both standalones got a numbered "How to use" list under the header, written from what this month
   established: the gig grant wording, filename matching, the automatic download, what a missing
   sample does
