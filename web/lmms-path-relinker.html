@@ -39,6 +39,12 @@ code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+.howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
+  background:var(--panel);border:1px solid var(--border-soft);
+  color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
+.howto strong{color:var(--text);display:block;margin-bottom:6px}
+.howto ol{margin:0;padding-left:20px}
+.howto li{margin-bottom:3px}
 .step{margin-bottom:26px}
 .step-head{display:flex;align-items:center;gap:11px;margin-bottom:13px}
 .step-num{width:23px;height:23px;border-radius:50%;background:var(--raised);
@@ -210,6 +216,21 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
   </header>
 
   <div id="unsupported" class="unsupported" hidden></div>
+
+  <div class="howto">
+    <strong>How to use</strong>
+    <ol>
+      <li>Drop a ZIP, a folder, or project files. Every <code>.mmp</code> and <code>.mmpz</code>
+        inside is found, at any depth. Nothing is uploaded.</li>
+      <li>Type the broken root and the correct one. The before and after lines show the change on
+        a reference from your own project. LMMS stores Windows paths with forward slashes, so
+        both slash directions are matched.</li>
+      <li>Press Scan. Nothing is modified; the table shows which projects contain the path and
+        how many references would change.</li>
+      <li>Press Repair &amp; download. The originals are not touched. The ZIP holds the repaired
+        projects and a repair log.</li>
+    </ol>
+  </div>
 
   <section class="step">
     <div class="step-head"><span class="step-num">1</span><h2>Choose your projects</h2></div>

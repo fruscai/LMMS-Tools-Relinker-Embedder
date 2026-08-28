@@ -1,5 +1,17 @@
 # Daily Log
 
+## 08-28-2026
+
+Instructions and the contact box
+
+- Both standalones got a numbered "How to use" list under the header, written from what this month
+  established: the gig grant wording, filename matching, the automatic download, what a missing
+  sample does
+- The combined file's attribution moved from above the tabs to a contact box at the bottom, under
+  the panes, and stays visible from either tab
+- The drive copies carry the same contact box at the bottom of each standalone. The repo copies do
+  not, because the repo is public
+
 ## 08-27-2026
 
 The combined toolset rebuilt from the standalones

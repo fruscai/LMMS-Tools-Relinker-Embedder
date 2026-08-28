@@ -38,6 +38,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+.howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
+  background:var(--panel);border:1px solid var(--border-soft);
+  color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
+.howto strong{color:var(--text);display:block;margin-bottom:6px}
+.howto ol{margin:0;padding-left:20px}
+.howto li{margin-bottom:3px}
 .tool-note{padding:13px 16px;border-radius:var(--radius-sm);
   background:rgba(131,81,212,.08);border:1px solid rgba(131,81,212,.28);
   color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:26px}
@@ -180,6 +186,22 @@ td.file{white-space:normal;word-break:break-all;
   <div class="tool-note">
     Writes sample audio into the project file, so it plays without the original audio files.
     All other files are copied unchanged.
+  </div>
+
+  <div class="howto">
+    <strong>How to use</strong>
+    <ol>
+      <li>Drop the final project file, a folder, or a ZIP. A single <code>.mmpz</code> is enough.</li>
+      <li>Connect the gig folder once. Chrome keeps the grant; Brave and Safari ask again each
+        visit, and the permission dialog says "upload" even though nothing leaves this machine.
+        Add a sample folder only when a sample is not in the gig folder.</li>
+      <li>Press Check. Nothing is written; the table lists each project, what will be embedded
+        and anything not found. Samples are matched by filename.</li>
+      <li>Press Embed &amp; save. The download starts on its own. One project in is one
+        <code>-EMBEDDED.mmpz</code> out; a folder or ZIP in is one ZIP.</li>
+      <li>The output opens in stock LMMS 1.3 with nothing to relink. A sample that could not be
+        read keeps its path and is named in the report, and the rest are still embedded.</li>
+    </ol>
   </div>
 
   <!-- 1 : source -->
