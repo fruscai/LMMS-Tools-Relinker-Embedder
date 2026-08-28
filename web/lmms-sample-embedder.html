@@ -197,26 +197,29 @@ td.file{white-space:normal;word-break:break-all;
     <strong>About</strong>
     <p>This tool processes files locally in your browser and does not upload anything. It writes
     the audio of each sample into the LMMS project file itself, so the project plays on any
-    machine with stock LMMS 1.3 &mdash; no sample folders, no relinking, nothing extra to send.</p>
+    machine with stock LMMS 1.3, with no sample folders, no relinking and nothing extra to
+    send.</p>
     <strong>How to start</strong>
     <ol>
       <li>Drag your final project file (<code>.mmpz</code> or <code>.mmp</code>) into the drop
         zone below, or click the <b>Choose project file</b> button. A folder or ZIP of projects
         works too.</li>
-      <li>Click the <b>Connect gig folder</b> button and select your LMMS gig folder
-        (<code>Documents/lmms/samples/gig</code>). Chrome remembers it after the first time.
-        Brave and Safari ask again on each visit, and their dialog says "upload" &mdash; nothing
-        actually leaves your machine.</li>
+      <li>Click the <b>Connect gig folder</b> button and select your LMMS gig folder, for example
+        <code>Documents/lmms/samples/gig</code>. Chrome remembers it after the first time. Brave
+        and Safari ask again on each visit, and their dialog says "upload" even though nothing
+        leaves your machine.</li>
       <li>If a sample lives somewhere other than the gig folder, click the
         <b>Add a sample folder</b> button and select that folder as well. Samples are matched by
         filename.</li>
-      <li>Click the <b>Check</b> button. This is a preview only &mdash; nothing is written yet.
-        The table shows each project, how many samples will be embedded, and names anything that
+      <li>Click the <b>Check</b> button. This is a preview only, and nothing is written yet. The
+        table shows each project, how many samples will be embedded, and names anything that
         could not be found.</li>
-      <li>Click the <b>Embed &amp; save</b> button. The finished project downloads automatically:
-        one project gives you one <code>-EMBEDDED.mmpz</code> file, and a folder or ZIP gives you
-        one ZIP.</li>
-      <li>Send the downloaded file. It opens in stock LMMS 1.3 with everything playing.</li>
+      <li>Click the <b>Embed &amp; save</b> button. The finished project downloads
+        automatically: one project gives you one <code>-EMBEDDED.mmpz</code> file, and a folder
+        or ZIP gives you one ZIP.</li>
+      <li>Check your work. Open the downloaded project in LMMS and make sure every file loads.
+        To prove the audio really travelled, move the audio files to the trash or out of the gig
+        folder and open the project again. Every sample should still be there.</li>
     </ol>
     <p>&#9888;&#65039; A sample that cannot be found keeps its original path and is named in the
     report. The rest still embed, and the project still opens.</p>
@@ -315,7 +318,7 @@ td.file{white-space:normal;word-break:break-all;
 <script>
 'use strict';
 /* ===========================================================================
-   LMMS Sample Embedder — standalone browser build.
+   LMMS Sample Embedder, standalone browser build.
 
    Writes sample audio into the project as base64, following LMMS's own format:
 
@@ -399,7 +402,7 @@ async function decodeToFrames(bytes) {
   return { frames: out, frameCount: n, rate: buf.sampleRate, channels: buf.numberOfChannels };
 }
 
-/** Chunked base64 — avoids blowing the argument limit on multi-MB buffers. */
+/** Chunked base64, avoids blowing the argument limit on multi-MB buffers. */
 function toBase64(bytes) {
   let s = '';
   const CH = 0x8000;
@@ -665,7 +668,7 @@ async function useGigHandle(handle, remember) {
 function paintGig() {
   const el = $('gig-status');
   if (state.gigHandle) {
-    el.textContent = `${state.gigHandle.name} — ${state.gigCount} audio file(s)`;
+    el.textContent = `${state.gigHandle.name}, ${state.gigCount} audio file(s)`;
     el.className = 'samples-found';
     $('connect-gig').hidden = true;
     $('forget-gig').hidden = false;
@@ -706,7 +709,7 @@ $('forget-gig').addEventListener('click', async () => {
     if (!h) return;
     const perm = await h.queryPermission({ mode: 'read' });
     if (perm === 'granted') { await useGigHandle(h, false); return; }
-    $('gig-status').textContent = `${h.name} — click to reconnect`;
+    $('gig-status').textContent = `${h.name}, click to reconnect`;
     $('connect-gig').hidden = false;
     $('connect-gig').textContent = 'Reconnect gig folder';
     $('connect-gig').onclick = async () => {
@@ -827,7 +830,7 @@ $('file-samples').addEventListener('change', (e) => {
     state.gigPickPending = false;
     if (added) {
       const root = (e.target.files[0]?.webkitRelativePath || '').split('/')[0] || 'folder';
-      $('gig-status').textContent = `${root} — ${added} audio file(s), this visit only`;
+      $('gig-status').textContent = `${root}, ${added} audio file(s), this visit only`;
       $('gig-status').className = 'samples-found';
     }
   }

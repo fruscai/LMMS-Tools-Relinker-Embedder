@@ -39,6 +39,12 @@ code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+.auto-row{display:flex;gap:11px;align-items:flex-start;margin:0 0 16px;padding:13px 15px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--panel)}
+.auto-row input{margin:2px 0 0;flex:0 0 auto;width:16px;height:16px;accent-color:var(--accent)}
+.auto-row strong{display:block;color:var(--text);font-size:13.5px;font-weight:600}
+.auto-row em{display:block;margin-top:3px;color:var(--text-dim);font-size:12.5px;font-style:normal;line-height:1.55}
+.auto-row code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--text)}
 .howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
   background:var(--panel);border:1px solid var(--border-soft);
   color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
@@ -225,21 +231,30 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
   <div class="howto">
     <strong>About</strong>
     <p>This tool processes files locally in your browser and does not upload anything. It repairs
-    LMMS projects whose samples stopped loading after a move to another machine or folder, by
-    rewriting the old path root to the correct one across every project at once.</p>
+    LMMS projects whose samples stopped loading after a move to another machine or folder. By
+    default it points every sample at your LMMS gig folder, which is the folder LMMS itself uses
+    for user samples.</p>
     <strong>How to start</strong>
     <ol>
+      <li>Copy your audio files into your LMMS gig folder. On every system this is the
+        <code>gig</code> folder inside your LMMS user samples directory, for example
+        <code>Documents/lmms/samples/gig</code>.</li>
       <li>Drag a folder or ZIP of projects into the drop zone below, or use the
         <b>Choose ZIP</b>, <b>Choose folder</b> or <b>Choose projects</b> buttons. Every
         <code>.mmp</code> and <code>.mmpz</code> inside is found, at any depth.</li>
-      <li>Type the broken root path (for example <code>C:/Users/You/Desktop/Audio/</code>) into
-        the first box and the correct one into the second. The before and after lines underneath
-        show the change applied to a real reference from your own project. Backslashes and
-        forward slashes both match, so paste the path either way.</li>
-      <li>Click the <b>Scan</b> button. This is a preview only &mdash; nothing is modified. The
+      <li>Leave <b>Point everything at my gig folder</b> ticked. Every sample that is not one of
+        LMMS's own is rewritten to <code>gig/&lt;file name&gt;</code>, with no paths to type.
+        LMMS resolves that against its own user samples folder, so the repaired project works on
+        Windows, macOS and Linux alike.</li>
+      <li>If you need a different destination instead, untick that box and type the broken root
+        path into the first field and the correct one into the second. The before and after lines
+        underneath show the change applied to a real reference from your own project.</li>
+      <li>Click the <b>Scan</b> button. This is a preview only, and nothing is modified. The
         table shows which projects contain the path and how many references will change.</li>
       <li>Click the <b>Repair &amp; download</b> button. Your original files are never touched.
-        The ZIP that downloads holds the repaired projects plus a repair log (JSON and CSV).</li>
+        The ZIP that downloads holds the repaired projects plus a repair log in JSON and CSV.</li>
+      <li>Check your work. Open the repaired projects in LMMS and make sure every file loads
+        with no missing sample warnings.</li>
     </ol>
     <p>&#9888;&#65039; Please do not modify this code or its functionality. If you find a bug,
     DM me so I can verify it and work on a fix for everyone.</p>
@@ -271,7 +286,18 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
 
   <section class="step">
     <div class="step-head"><span class="step-num">2</span><h2>Describe the path change</h2></div>
-    <div class="field-stack">
+
+    <label class="auto-row">
+      <input id="auto-gig" type="checkbox" checked />
+      <span>
+        <strong>Point everything at my gig folder</strong>
+        <em>Every sample that is not one of LMMS's own is rewritten to
+        <code>gig/&lt;file name&gt;</code>. No paths to type. LMMS resolves that against its own
+        user samples folder, so the same project works on Windows, macOS and Linux.</em>
+      </span>
+    </label>
+
+    <div id="manual-paths" class="field-stack" hidden>
       <label class="field">
         <span class="field-label">Incorrect path <em>the broken folder LMMS reports</em></span>
         <input id="old-path" type="text" spellcheck="false" autocomplete="off"
@@ -301,7 +327,7 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
       <span class="switch-text">Match either slash direction <strong>(on by default)</strong>
         <em>LMMS saves Windows paths with forward slashes, so <code>C:\Users\…</code> is stored
         as <code>C:/Users/…</code>. With this on, both forms are found and the replacement keeps
-        whichever direction your projects use. Turn it off only for a strictly literal match —
+        whichever direction your projects use. Turn it off only for a strictly literal match 
         for example if a folder name genuinely contains a backslash, which is legal on
         macOS and Linux.</em>
       </span>
@@ -350,13 +376,13 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
 
   <footer class="footer">
     <strong>Browser support.</strong>
-    Best used in a Chromium browser — <em>Chrome, Brave, Edge or Opera</em>. Safari 16.4+
+    Best used in a Chromium browser, <em>Chrome, Brave, Edge or Opera</em>. Safari 16.4+
     and Firefox 113+ also work. Anything older lacks the built-in compression the
     <code>.mmpz</code> format needs, and the page will tell you so rather than
     producing a broken file. Chromium handles large archives and the folder picker
     most reliably.
     <br /><br />
-    Works offline — save this file and double-click it. Nothing is uploaded, and the
+    Works offline, save this file and double-click it. Nothing is uploaded, and the
     page makes no network requests of any kind.
   </footer>
 </div>
@@ -364,7 +390,7 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
 <script>
 'use strict';
 /* ============================================================================
-   LMMS Path Relinker — standalone browser build.
+   LMMS Path Relinker, standalone browser build.
 
    Same guarantees as the desktop app: deterministic replacement, no fuzzy
    matching, and every produced .mmpz is decompressed again and compared
@@ -397,10 +423,10 @@ async function streamThrough(bytes, transform) {
   return new Uint8Array(out);
 }
 
-/** zlib-wrapped deflate — the format Qt qCompress stores. */
+/** zlib-wrapped deflate, the format Qt qCompress stores. */
 const inflateZlib = (b) => streamThrough(b, new DecompressionStream('deflate'));
 const deflateZlib = (b) => streamThrough(b, new CompressionStream('deflate'));
-/** raw deflate — the format ZIP entries use. */
+/** raw deflate, the format ZIP entries use. */
 const inflateRaw = (b) => streamThrough(b, new DecompressionStream('deflate-raw'));
 const deflateRaw = (b) => streamThrough(b, new CompressionStream('deflate-raw'));
 
@@ -419,7 +445,7 @@ async function decompressMmpz(bytes) {
   try {
     out = await inflateZlib(bytes.subarray(4));
   } catch (err) {
-    throw new Error('zlib inflate failed — the file is not a valid .mmpz');
+    throw new Error('zlib inflate failed, the file is not a valid .mmpz');
   }
   if (out.length !== declared) {
     throw new Error(`Declared size ${declared} does not match actual ${out.length}`);
@@ -592,7 +618,7 @@ function findEocd(view, length) {
 }
 
 /**
- * Parse a ZIP into entry descriptors. Entry data is NOT decompressed here —
+ * Parse a ZIP into entry descriptors. Entry data is NOT decompressed here 
  * files we do not modify are copied through in their original compressed form,
  * which preserves them exactly and keeps memory use low.
  */
@@ -755,13 +781,79 @@ async function loadProjectBytes(item) {
   return { xmlBytes: raw, raw };
 }
 
+/* ---------- automatic gig-folder relink ---------- */
+
+/* LMMS resolves a bare relative path against its user samples directory, which
+   is where the gig folder lives, so gig/<file> needs no absolute path and no
+   knowledge of the machine the project came from. */
+const GIG_PREFIX = 'gig/';
+const RELINK_NODES = /<(?:audiofileprocessor|sampleclip|sampletco|slicert)\b[^>]*>/g;
+const SRC_PREFIX = /^(?:factorysample|usersample|usergig|usersoundfont|local|userprojects|factoryprojects|preset|factorypreset):/i;
+const GIG_FACTORY_DIRS = /^(?:basses|bassloops|beats|drums|drumsynth|effects|instruments|latin|misc|shapes|stringsnpads|waveforms)\//i;
+
+const baseNameOf = (src) => {
+  const c = String(src).replace(/\\/g, '/').replace(SRC_PREFIX, '');
+  const i = c.lastIndexOf('/');
+  return i === -1 ? c : c.slice(i + 1);
+};
+
+/* Samples that ship with LMMS resolve on any machine, so they are left alone. */
+const isStockSample = (src) => {
+  if (/^factorysample:/i.test(src)) return true;
+  const c = String(src).replace(/\\/g, '/');
+  if (/^[a-z]:\//i.test(c) || c.startsWith('/') || SRC_PREFIX.test(c)) return false;
+  return GIG_FACTORY_DIRS.test(c);
+};
+
+function applyAutoGig(text) {
+  let occurrences = 0;
+  const byVariant = Object.create(null);
+  const out = text.replace(RELINK_NODES, (tag) =>
+    tag.replace(/\bsrc="([^"]*)"/, (whole, src) => {
+      if (!src || isStockSample(src)) return whole;
+      const name = baseNameOf(src);
+      if (!name) return whole;
+      const next = GIG_PREFIX + name;
+      if (next === src) return whole;
+      occurrences++;
+      byVariant['gig folder'] = (byVariant['gig folder'] || 0) + 1;
+      return `src="${next}"`;
+    }));
+  return { text: out, occurrences, byVariant };
+}
+
+function autoGigExample(text) {
+  const nodes = text.match(RELINK_NODES) || [];
+  for (const tag of nodes) {
+    const m = tag.match(/\bsrc="([^"]+)"/);
+    if (!m || isStockSample(m[1])) continue;
+    const after = GIG_PREFIX + baseNameOf(m[1]);
+    if (after === m[1]) continue;
+    return { before: m[1], after };
+  }
+  return null;
+}
+
+function makeTransform(settings) {
+  if (settings.autoGig) {
+    return { auto: true, apply: applyAutoGig, example: autoGigExample };
+  }
+  const variants = buildVariants(settings.oldPath, settings.newPath, settings.matchSeparatorVariants);
+  return {
+    auto: false,
+    apply: (t) => applyVariants(t, variants),
+    example: (t) => extractExample(t, variants),
+    variants,
+  };
+}
+
 async function scanAll(settings, onProgress) {
   const projects = state.items.filter((i) => isProject(i.name));
   const results = [];
   let projectsWithMatches = 0, totalOccurrences = 0, example = null;
   let mmp = 0, mmpz = 0;
 
-  const variants = buildVariants(settings.oldPath, settings.newPath, settings.matchSeparatorVariants);
+  const tx = makeTransform(settings);
 
   for (let i = 0; i < projects.length; i++) {
     const item = projects[i];
@@ -778,14 +870,14 @@ async function scanAll(settings, onProgress) {
         entry.status = 'INVALID PROJECT';
         entry.message = validation.reason;
       } else {
-        const r = applyVariants(text, variants);
+        const r = tx.apply(text);
         entry.occurrences = r.occurrences;
         entry.byVariant = r.byVariant;
         entry.status = r.occurrences > 0 ? 'WILL MODIFY' : 'NO MATCH';
         if (r.occurrences > 0) {
           projectsWithMatches++;
           totalOccurrences += r.occurrences;
-          if (!example) example = extractExample(text, variants);
+          if (!example) example = tx.example(text);
         }
       }
     } catch (err) {
@@ -809,7 +901,7 @@ async function scanAll(settings, onProgress) {
 }
 
 async function repairAll(settings, onProgress) {
-  const variants = buildVariants(settings.oldPath, settings.newPath, settings.matchSeparatorVariants);
+  const tx = makeTransform(settings);
   const records = [];
   const log = [];
   const summary = {
@@ -848,7 +940,7 @@ async function repairAll(settings, onProgress) {
       const validation = validateProjectText(text);
       if (!validation.valid) throw new Error(validation.reason);
 
-      const r = applyVariants(text, variants);
+      const r = tx.apply(text);
 
       if (r.occurrences === 0) {
         record.result = 'NO MATCH';
@@ -856,7 +948,7 @@ async function repairAll(settings, onProgress) {
         records.push(item.passthrough || (await makeRecord(item.name, raw, false, item.times)));
       } else {
         if (!validateProjectText(r.text).valid) throw new Error('replacement broke the document');
-        if (!deltaConsistent(text, r.text, variants, r.byVariant)) {
+        if (!tx.auto && !deltaConsistent(text, r.text, tx.variants, r.byVariant)) {
           throw new Error('unexpected change in document length');
         }
 
@@ -953,15 +1045,17 @@ function setProgress(done, total) {
 }
 
 function refreshButtons() {
+  const auto = $('auto-gig').checked;
+  $('manual-paths').hidden = auto;
   const ready = SUPPORTED && state.items.length > 0 &&
-    oldPathInput.value.trim() && newPathInput.value.trim();
+    (auto || (oldPathInput.value.trim() && newPathInput.value.trim()));
   scanBtn.disabled = !ready;
   repairBtn.disabled = !(state.scanned && state.scanned.summary.projectsWithMatches > 0);
 }
 
 function setSource(kind, label, items) {
   state.kind = kind; state.label = label; state.items = items; state.scanned = null;
-  $('source-path').textContent = `${label} — ${items.filter((i) => isProject(i.name)).length} project file(s)`;
+  $('source-path').textContent = `${label}, ${items.filter((i) => isProject(i.name)).length} project file(s)`;
   $('source-chip').hidden = false;
   dropzone.hidden = true;
   $('preview').hidden = true;
@@ -1047,6 +1141,12 @@ document.addEventListener('drop', async (e) => {
 /* --- live example / hints --- */
 
 function updateLiveExample() {
+  if ($('auto-gig').checked) {
+    $('ex-before').textContent = 'C:/Users/OldUser/Desktop/Project Audio/Kick 01.wav';
+    $('ex-after').textContent = 'gig/Kick 01.wav';
+    $('live-example').hidden = false;
+    return;
+  }
   const o = oldPathInput.value, n = newPathInput.value;
   if (!o || !n) { $('live-example').hidden = true; return; }
   $('ex-before').textContent = o + 'Kick 01.wav';
@@ -1070,8 +1170,10 @@ function onInputsChanged() {
 oldPathInput.addEventListener('input', onInputsChanged);
 newPathInput.addEventListener('input', onInputsChanged);
 separatorToggle.addEventListener('change', onInputsChanged);
+$('auto-gig').addEventListener('change', onInputsChanged);
 
 const settings = () => ({
+  autoGig: $('auto-gig').checked,
   oldPath: oldPathInput.value,
   newPath: newPathInput.value,
   // Defaults to on, because LMMS stores Windows paths with forward slashes and a
@@ -1133,7 +1235,7 @@ function renderPreview(data) {
 
   const trunc = $('preview-truncated');
   if (affected.length > rows.length) {
-    trunc.textContent = `Showing the first ${rows.length} of ${affected.length} affected projects — all will be repaired.`;
+    trunc.textContent = `Showing the first ${rows.length} of ${affected.length} affected projects, all will be repaired.`;
     trunc.hidden = false;
   } else trunc.hidden = true;
 
@@ -1150,8 +1252,8 @@ scanBtn.addEventListener('click', async () => {
     state.scanned = data;
     renderPreview(data);
     setStatus(data.summary.projectsWithMatches
-      ? 'Scan complete — review, then press Repair.'
-      : 'Scan complete — no project contains that path.',
+      ? 'Scan complete, review, then press Repair.'
+      : 'Scan complete, no project contains that path.',
       data.summary.projectsWithMatches ? 'done' : '');
   } catch (err) {
     setStatus(err.message, 'error');
@@ -1178,7 +1280,7 @@ repairBtn.addEventListener('click', async () => {
     const base = (state.label || 'projects').replace(/\.zip$/i, '');
     $('output-name').textContent = `${base}_RELINKED.zip`;
     $('result').hidden = false;
-    setStatus('Repair complete — press Save file.', 'done');
+    setStatus('Repair complete, press Save file.', 'done');
   } catch (err) {
     setStatus(err.message, 'error');
   } finally { $('progress').hidden = true; refreshButtons(); }

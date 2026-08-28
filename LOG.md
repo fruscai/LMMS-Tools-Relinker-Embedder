@@ -2,6 +2,24 @@
 
 ## 08-28-2026
 
+The gig folder relink was never in the repo
+
+- BIG ONE: **`auto-gig` existed only inside `LMMS Tools v3.html` on the drive.** No standalone
+  relinker had it and it was never committed. I described the drive divergence as "styling plus
+  the banner", which was wrong, and rebuilding the drive copies from the repo standalone dropped
+  the feature from the combined tool for a day
+- Ported into the repo relinker: `GIG_PREFIX`, `applyAutoGig`, `autoGigExample`, `makeTransform`,
+  and the checkbox. Scan and repair now go through `makeTransform` rather than calling
+  `buildVariants` directly. The delta check only applies to the manual path mode, because
+  `gig/<name>` replacements vary in length
+- ⚠️ Two of the patches were written against source text that did not exist and applied nothing
+  without failing. `updateLiveExample` matched, `refreshButtons` did not, so the Scan button
+  stayed disabled with the box ticked. Assert on every replacement, not some of them
+- Verified on a project holding three reference styles: `usergig:` with an entity, a Windows
+  absolute path and a bare filename. All 12 rewritten to `gig/<name>`, 11 factory refs untouched
+
+## 08-28-2026
+
 Instructions and the contact box
 
 - The first pass at the lists was clipped fragments and got rejected. Rewritten as full
