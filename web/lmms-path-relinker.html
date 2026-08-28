@@ -39,6 +39,14 @@ code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+.collision-box{margin:0 0 16px;padding:13px 15px;border-radius:var(--radius-sm);
+  border:1px solid var(--bad);border-left:3px solid var(--bad);background:var(--bad-dim);
+  color:var(--text-dim);font-size:12.5px;line-height:1.6}
+.collision-box strong{display:block;color:var(--text);font-size:13.5px;margin-bottom:4px}
+.collision-box p{margin:0 0 8px}
+.collision-box ul{margin:0 0 10px;padding-left:18px}
+.collision-box li{margin-bottom:3px}
+.collision-box code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--text)}
 .auto-row{display:flex;gap:11px;align-items:flex-start;margin:0 0 16px;padding:13px 15px;
   border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--panel)}
 .auto-row input{margin:2px 0 0;flex:0 0 auto;width:16px;height:16px;accent-color:var(--accent)}
@@ -232,8 +240,8 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
     <strong>About</strong>
     <p>This tool processes files locally in your browser and does not upload anything. It repairs
     LMMS projects whose samples stopped loading after a move to another machine or folder. By
-    default it points every sample at your LMMS gig folder, which is the folder LMMS itself uses
-    for user samples.</p>
+    default it points every sample at your LMMS gig folder, using the <code>usergig:</code>
+    reference that LMMS resolves through its own gig directory setting.</p>
     <strong>How to start</strong>
     <ol>
       <li>Copy your audio files into your LMMS gig folder. On every system this is the
@@ -243,9 +251,12 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
         <b>Choose ZIP</b>, <b>Choose folder</b> or <b>Choose projects</b> buttons. Every
         <code>.mmp</code> and <code>.mmpz</code> inside is found, at any depth.</li>
       <li>Leave <b>Point everything at my gig folder</b> ticked. Every sample that is not one of
-        LMMS's own is rewritten to <code>gig/&lt;file name&gt;</code>, with no paths to type.
-        LMMS resolves that against its own user samples folder, so the repaired project works on
-        Windows, macOS and Linux alike.</li>
+        LMMS's own becomes <code>usergig:&lt;file name&gt;</code>, with no paths to type. Samples
+        that already carry a working reference, such as <code>local:</code> or
+        <code>factorysample:</code>, are left alone.</li>
+      <li>If two different samples share a file name, the tool stops and lists them, because both
+        would end up pointing at whichever file reached the gig folder last. Use the button it
+        offers to keep the parent folder, or rename the files.</li>
       <li>If you need a different destination instead, untick that box and type the broken root
         path into the first field and the correct one into the second. The before and after lines
         underneath show the change applied to a real reference from your own project.</li>
@@ -292,10 +303,17 @@ td.num{font-variant-numeric:tabular-nums;font-weight:600}
       <span>
         <strong>Point everything at my gig folder</strong>
         <em>Every sample that is not one of LMMS's own is rewritten to
-        <code>gig/&lt;file name&gt;</code>. No paths to type. LMMS resolves that against its own
-        user samples folder, so the same project works on Windows, macOS and Linux.</em>
+        <code>usergig:&lt;file name&gt;</code>. No paths to type. LMMS resolves that through its
+        own gig directory setting, so the same project works on Windows, macOS and Linux.</em>
       </span>
     </label>
+
+    <div id="collision-box" class="collision-box" hidden>
+      <strong id="collision-title"></strong>
+      <p id="collision-lead"></p>
+      <ul id="collision-list"></ul>
+      <button type="button" id="collision-fix" class="ghost" hidden></button>
+    </div>
 
     <div id="manual-paths" class="field-stack" hidden>
       <label class="field">
@@ -768,7 +786,8 @@ async function makeRecord(name, bytes, isDir = false, times = null) {
 
 /* ---------- source model ---------- */
 
-const state = { kind: null, label: '', items: [], scanned: null, output: null };
+const state = { kind: null, label: '', items: [], scanned: null, output: null,
+                keepParents: 0, collisions: [] };
 
 const isProject = (name) => /\.(mmp|mmpz)$/i.test(name);
 const formatOf = (name) => (/\.mmpz$/i.test(name) ? 'mmpz' : 'mmp');
@@ -783,38 +802,98 @@ async function loadProjectBytes(item) {
 
 /* ---------- automatic gig-folder relink ---------- */
 
-/* LMMS resolves a bare relative path against its user samples directory, which
-   is where the gig folder lives, so gig/<file> needs no absolute path and no
-   knowledge of the machine the project came from. */
-const GIG_PREFIX = 'gig/';
+/* CORE START: pure logic, also loaded directly by tests/gigrelink.test.js */
+
+/* LMMS resolves usergig: through the gig directory set in its own preferences.
+   A bare gig/<file> path goes through the legacy relative upgrade instead,
+   which resolves against the user samples directory and only when the file
+   already exists. Measured against LMMS 1.3 with gigdir pointed outside the
+   samples directory: usergig: loaded the sample, gig/ reported 22 read
+   failures and rendered silence. */
+const GIG_PREFIX = 'usergig:';
 const RELINK_NODES = /<(?:audiofileprocessor|sampleclip|sampletco|slicert)\b[^>]*>/g;
-const SRC_PREFIX = /^(?:factorysample|usersample|usergig|usersoundfont|local|userprojects|factoryprojects|preset|factorypreset):/i;
-const GIG_FACTORY_DIRS = /^(?:basses|bassloops|beats|drums|drumsynth|effects|instruments|latin|misc|shapes|stringsnpads|waveforms)\//i;
+
+/* Every prefix LMMS resolves on its own. A path carrying one of these already
+   works on the target machine, so rewriting it would only break it. */
+const PORTABLE_PREFIX = /^(?:factorysample|usersample|usergig|usersoundfont|local|userprojects|factoryprojects|preset|factorypreset):/i;
+const FACTORY_DIRS = /^(?:basses|bassloops|beats|drums|drumsynth|effects|instruments|latin|misc|shapes|stringsnpads|waveforms)\//i;
+const WINDOWS_ABS = /^[a-z]:\//i;
+
+const normalizeSlashes = (src) => String(src).replace(/\\/g, '/');
+
+const pathSegments = (src) => normalizeSlashes(src).replace(PORTABLE_PREFIX, '')
+  .split('/').filter(Boolean);
 
 const baseNameOf = (src) => {
-  const c = String(src).replace(/\\/g, '/').replace(SRC_PREFIX, '');
-  const i = c.lastIndexOf('/');
-  return i === -1 ? c : c.slice(i + 1);
+  const seg = pathSegments(src);
+  return seg.length ? seg[seg.length - 1] : '';
 };
 
-/* Samples that ship with LMMS resolve on any machine, so they are left alone. */
-const isStockSample = (src) => {
-  if (/^factorysample:/i.test(src)) return true;
-  const c = String(src).replace(/\\/g, '/');
-  if (/^[a-z]:\//i.test(c) || c.startsWith('/') || SRC_PREFIX.test(c)) return false;
-  return GIG_FACTORY_DIRS.test(c);
-};
+/* Three kinds of reference, decided explicitly rather than by one catch-all
+   test: already portable, shipped with LMMS, or pointing at this machine. */
+function classifyRef(src) {
+  if (!src) return 'empty';
+  const c = normalizeSlashes(src);
+  if (PORTABLE_PREFIX.test(c)) return 'portable';
+  if (WINDOWS_ABS.test(c) || c.startsWith('/')) return 'external';
+  if (FACTORY_DIRS.test(c)) return 'stock';
+  return 'external';
+}
 
-function applyAutoGig(text) {
+const isRelinkable = (src) => classifyRef(src) === 'external';
+
+/* Two different references reaching the same usergig: name would collide, and
+   whichever file lands in the gig folder last would silently answer for both.
+   Adding back parent folders separates them, so the collision is reported and
+   the deeper name offered rather than guessed at. */
+function planTargets(refs, keepParents) {
+  const distinct = [...new Set(refs.filter(isRelinkable))];
+  const depthOf = (src) => {
+    const seg = pathSegments(src);
+    const n = Math.min(keepParents + 1, seg.length);
+    return seg.slice(seg.length - n).join('/');
+  };
+  const plan = new Map();
+  const claims = new Map();
+  for (const src of distinct) {
+    const name = depthOf(src);
+    plan.set(src, GIG_PREFIX + name);
+    if (!claims.has(name)) claims.set(name, []);
+    claims.get(name).push(src);
+  }
+  const collisions = [...claims.entries()]
+    .filter(([, owners]) => owners.length > 1)
+    .map(([name, owners]) => ({ name, owners }));
+  return { plan, collisions };
+}
+
+/* The deepest level that separates every colliding name, or null when no
+   depth does. */
+function resolveDepth(refs, maxParents = 4) {
+  for (let d = 0; d <= maxParents; d++) {
+    const { plan, collisions } = planTargets(refs, d);
+    if (!collisions.length) return { keepParents: d, plan, collisions };
+  }
+  return { keepParents: null, ...planTargets(refs, maxParents) };
+}
+
+function collectRefs(text) {
+  const refs = [];
+  for (const tag of text.match(RELINK_NODES) || []) {
+    const m = tag.match(/\bsrc="([^"]*)"/);
+    if (m) refs.push(m[1]);
+  }
+  return refs;
+}
+
+function applyAutoGig(text, keepParents = 0) {
+  const { plan } = planTargets(collectRefs(text), keepParents);
   let occurrences = 0;
   const byVariant = Object.create(null);
   const out = text.replace(RELINK_NODES, (tag) =>
     tag.replace(/\bsrc="([^"]*)"/, (whole, src) => {
-      if (!src || isStockSample(src)) return whole;
-      const name = baseNameOf(src);
-      if (!name) return whole;
-      const next = GIG_PREFIX + name;
-      if (next === src) return whole;
+      const next = plan.get(src);
+      if (!next || next === src) return whole;
       occurrences++;
       byVariant['gig folder'] = (byVariant['gig folder'] || 0) + 1;
       return `src="${next}"`;
@@ -822,21 +901,39 @@ function applyAutoGig(text) {
   return { text: out, occurrences, byVariant };
 }
 
-function autoGigExample(text) {
-  const nodes = text.match(RELINK_NODES) || [];
-  for (const tag of nodes) {
-    const m = tag.match(/\bsrc="([^"]+)"/);
-    if (!m || isStockSample(m[1])) continue;
-    const after = GIG_PREFIX + baseNameOf(m[1]);
-    if (after === m[1]) continue;
-    return { before: m[1], after };
+function autoGigExample(text, keepParents = 0) {
+  const { plan } = planTargets(collectRefs(text), keepParents);
+  for (const [before, after] of plan) {
+    if (after !== before) return { before, after };
   }
   return null;
 }
 
+/* Auto mode cannot use the manual length-delta check, because every
+   replacement is a different length. Instead both documents are reduced to the
+   same skeleton with every sample src blanked: if anything outside those
+   attributes moved, the skeletons stop matching. */
+function autoGigIntact(original, modified, expected) {
+  const blank = (t) => t.replace(RELINK_NODES, (tag) =>
+    tag.replace(/\bsrc="[^"]*"/, 'src="\u0000"'));
+  if (blank(original) !== blank(modified)) return false;
+  const before = collectRefs(original), after = collectRefs(modified);
+  if (before.length !== after.length) return false;
+  const changed = before.filter((src, i) => src !== after[i]).length;
+  return changed === expected;
+}
+
+/* CORE END */
+
 function makeTransform(settings) {
   if (settings.autoGig) {
-    return { auto: true, apply: applyAutoGig, example: autoGigExample };
+    const keep = settings.keepParents || 0;
+    return {
+      auto: true,
+      keepParents: keep,
+      apply: (t) => applyAutoGig(t, keep),
+      example: (t) => autoGigExample(t, keep),
+    };
   }
   const variants = buildVariants(settings.oldPath, settings.newPath, settings.matchSeparatorVariants);
   return {
@@ -854,6 +951,8 @@ async function scanAll(settings, onProgress) {
   let mmp = 0, mmpz = 0;
 
   const tx = makeTransform(settings);
+  const collisionMap = new Map();
+  const allRefs = [];
 
   for (let i = 0; i < projects.length; i++) {
     const item = projects[i];
@@ -870,6 +969,13 @@ async function scanAll(settings, onProgress) {
         entry.status = 'INVALID PROJECT';
         entry.message = validation.reason;
       } else {
+        if (tx.auto) {
+          allRefs.push(...collectRefs(text));
+          for (const c of planTargets(collectRefs(text), tx.keepParents).collisions) {
+            if (!collisionMap.has(c.name)) collisionMap.set(c.name, new Set());
+            for (const o of c.owners) collisionMap.get(c.name).add(o);
+          }
+        }
         const r = tx.apply(text);
         entry.occurrences = r.occurrences;
         entry.byVariant = r.byVariant;
@@ -896,12 +1002,17 @@ async function scanAll(settings, onProgress) {
       foldersScanned: new Set(projects.map((p) => p.name.split('/').slice(0, -1).join('/'))).size,
       projectsWithMatches, projectsWithoutMatches: projects.length - projectsWithMatches,
       totalOccurrences, example,
+      collisions: [...collisionMap.entries()].map(([name, owners]) => ({ name, owners: [...owners] })),
+      allRefs: [...new Set(allRefs)],
     },
   };
 }
 
 async function repairAll(settings, onProgress) {
   const tx = makeTransform(settings);
+  if (tx.auto && settings.collisions && settings.collisions.length) {
+    throw new Error('Two different samples would become the same gig folder name. Resolve that before repairing.');
+  }
   const records = [];
   const log = [];
   const summary = {
@@ -948,8 +1059,13 @@ async function repairAll(settings, onProgress) {
         records.push(item.passthrough || (await makeRecord(item.name, raw, false, item.times)));
       } else {
         if (!validateProjectText(r.text).valid) throw new Error('replacement broke the document');
-        if (!tx.auto && !deltaConsistent(text, r.text, tx.variants, r.byVariant)) {
-          throw new Error('unexpected change in document length');
+        const intact = tx.auto
+          ? autoGigIntact(text, r.text, r.occurrences)
+          : deltaConsistent(text, r.text, tx.variants, r.byVariant);
+        if (!intact) {
+          throw new Error(tx.auto
+            ? 'the project changed outside its sample paths'
+            : 'unexpected change in document length');
         }
 
         const modifiedXml = encodeProjectText(r.text, hadBom);
@@ -1044,13 +1160,43 @@ function setProgress(done, total) {
   $('progress-bar').style.width = Math.round((done / total) * 100) + '%';
 }
 
+function paintCollisions() {
+  const box = $('collision-box');
+  const list = state.collisions;
+  if (!list.length) { box.hidden = true; return; }
+
+  const deeper = resolveDepth(state.scannedRefs || []);
+  $('collision-title').textContent =
+    `${list.length} name(s) would be shared by different samples`;
+  $('collision-lead').textContent = deeper.keepParents !== null
+    ? 'Whichever file landed in the gig folder last would answer for all of them. Keeping the parent folder separates them.'
+    : 'Whichever file landed in the gig folder last would answer for all of them. Rename the files, or use the manual path fields instead.';
+  $('collision-list').innerHTML = list.map((c) =>
+    `<li><code>${escapeHtml(c.name)}</code> claimed by ${c.owners.length}: ` +
+    c.owners.map((o) => `<code>${escapeHtml(o)}</code>`).join(', ') + '</li>').join('');
+
+  const fix = $('collision-fix');
+  if (deeper.keepParents !== null && deeper.keepParents > state.keepParents) {
+    fix.hidden = false;
+    fix.textContent = `Keep ${deeper.keepParents} parent folder(s) and check again`;
+    fix.onclick = () => {
+      state.keepParents = deeper.keepParents;
+      state.scanned = null; state.collisions = [];
+      box.hidden = true; refreshButtons();
+      scanBtn.click();
+    };
+  } else fix.hidden = true;
+  box.hidden = false;
+}
+
 function refreshButtons() {
   const auto = $('auto-gig').checked;
   $('manual-paths').hidden = auto;
   const ready = SUPPORTED && state.items.length > 0 &&
     (auto || (oldPathInput.value.trim() && newPathInput.value.trim()));
   scanBtn.disabled = !ready;
-  repairBtn.disabled = !(state.scanned && state.scanned.summary.projectsWithMatches > 0);
+  repairBtn.disabled = !(state.scanned && state.scanned.summary.projectsWithMatches > 0
+    && state.collisions.length === 0);
 }
 
 function setSource(kind, label, items) {
@@ -1065,6 +1211,8 @@ function setSource(kind, label, items) {
 
 $('clear-source').addEventListener('click', () => {
   state.kind = null; state.items = []; state.scanned = null;
+  state.keepParents = 0; state.collisions = [];
+  $('collision-box').hidden = true;
   $('source-chip').hidden = true; dropzone.hidden = false;
   $('preview').hidden = true; $('result').hidden = true;
   setStatus(''); refreshButtons();
@@ -1174,6 +1322,8 @@ $('auto-gig').addEventListener('change', onInputsChanged);
 
 const settings = () => ({
   autoGig: $('auto-gig').checked,
+  keepParents: state.keepParents,
+  collisions: state.collisions,
   oldPath: oldPathInput.value,
   newPath: newPathInput.value,
   // Defaults to on, because LMMS stores Windows paths with forward slashes and a
@@ -1250,11 +1400,16 @@ scanBtn.addEventListener('click', async () => {
   try {
     const data = await scanAll(settings(), setProgress);
     state.scanned = data;
+    state.collisions = data.summary.collisions || [];
+    state.scannedRefs = data.summary.allRefs || [];
     renderPreview(data);
-    setStatus(data.summary.projectsWithMatches
-      ? 'Scan complete, review, then press Repair.'
-      : 'Scan complete, no project contains that path.',
-      data.summary.projectsWithMatches ? 'done' : '');
+    paintCollisions();
+    setStatus(state.collisions.length
+      ? 'Scan complete, different samples would share a gig folder name.'
+      : data.summary.projectsWithMatches
+        ? 'Scan complete, review, then press Repair.'
+        : 'Scan complete, no project contains that path.',
+      state.collisions.length ? 'error' : data.summary.projectsWithMatches ? 'done' : '');
   } catch (err) {
     setStatus(err.message, 'error');
   } finally { $('progress').hidden = true; refreshButtons(); }

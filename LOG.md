@@ -2,6 +2,47 @@
 
 ## 08-28-2026
 
+The gig folder reference was the wrong form
+
+- BIG ONE: **`gig/<name>` does not point at the configured gig folder.** LMMS resolves an
+  unprefixed path through `oldRelativeUpgrade`, which tries the user samples directory and only
+  when the file already exists, then falls back to the working directory. `usergig:` goes through
+  `Base::UserGIG` and the gig directory set in preferences
+- Measured in LMMS 1.3 with `gigdir` pointed outside the samples directory: the bare form produced
+  22 read failures and rendered the sample silent, `usergig:` loaded it with none. Both projects
+  were otherwise identical. The relinker now writes `usergig:`
+
+Same name, different file
+
+- Both tools reduced a reference to its filename, so two folders each holding a `Kick.wav` were
+  interchangeable. The embedder took whichever it indexed first and the relinker pointed both at
+  one name
+- Samples are now indexed by relative path. A reference resolves by exact path, then by the
+  longest path suffix only one file answers to, then by bare filename only when one file carries
+  it. Anything still plural is listed with its candidates and blocks the run until picked
+- The relinker reports two references that would claim one gig name, blocks Repair, and offers to
+  keep parent folders instead. `usergig:A/Kick.wav` and `usergig:B/Kick.wav` stay distinct
+
+One project at a time
+
+- Folder and ZIP input is out of the embedder along with the archive writer and the passthrough
+  copying. One project in, one file out. A failed embed now writes nothing rather than a partial
+  archive, and the result is read back and compared before it is offered
+
+Verification for automatic mode
+
+- The manual length-delta check cannot work when every replacement is a different length. Auto
+  mode blanks every sample `src` in both documents and compares the skeletons, so any change
+  outside those attributes is caught, plus a count check
+
+⚠️ Two silent no-op patches in one day
+
+- `refreshButtons` and `makeTransform` were both patched against source text that did not exist.
+  Neither replacement applied and neither failed. The first left the Scan button dead, the second
+  left the page throwing `makeTransform is not defined`. Assert on every replacement
+
+## 08-28-2026
+
 The gig folder relink was never in the repo
 
 - BIG ONE: **`auto-gig` existed only inside `LMMS Tools v3.html` on the drive.** No standalone
@@ -196,8 +237,8 @@ Sample Embedder
   audio data itself, which removes the external file dependency entirely rather than pointing it
   somewhere else
 - Built it as a single standalone HTML file rather than another Electron app. Embedding is only
-  data work — decompressing the project, decoding the WAV into frames, base64, rewriting the XML
-  and recompressing — and browsers now do every one of those natively through `CompressionStream`
+  data work, decompressing the project, decoding the WAV into frames, base64, rewriting the XML
+  and recompressing, and browsers now do every one of those natively through `CompressionStream`
   and `DecompressionStream`. Bundling is the opposite case, because it shells out to the LMMS
   binary, which is why that one has to remain a desktop application
 - The scope choice matters for how it gets used. Embedding everything makes every snapshot and

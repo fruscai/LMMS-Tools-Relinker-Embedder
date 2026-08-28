@@ -1,5 +1,40 @@
 # Decisions
 
+## 08-28-2026 - usergig, and what to do when two files share a name
+
+Why `usergig:` rather than `gig/`
+
+`PathUtil::toAbsolute` sends an unprefixed path to `oldRelativeUpgrade`, which probes the user
+samples directory, the factory samples directory and the VST directory, and takes the first that
+already holds the file. Nothing there consults the configured gig directory, and when no probe
+hits, the path stays relative to the working directory. `usergig:` maps to `Base::UserGIG`, which
+is `ConfigManager::gigDir()`, with no probing.
+
+Measured rather than reasoned: one project written both ways, rendered by stock LMMS 1.3 under a
+config with `gigdir` outside the samples directory. `gig/` gave 22 read failures and a silent
+sample. `usergig:` gave none.
+
+Same filename, different audio
+
+A basename is not an identity. Two folders holding `Kick.wav` are two different samples, and
+picking either one silently is a corrupted delivery that still opens and still plays.
+
+The resolution order is exact relative path, then the longest path suffix that exactly one file
+answers to, then bare filename only when exactly one file carries it. Anything left with more than
+one candidate is reported with all of them and blocks the run. A choice is remembered for the rest
+of the run so the same reference is not asked about twice.
+
+For the relinker the problem is the reverse: two different references becoming one flat
+`usergig:` name. That is detected from the project alone, and rather than guessing, the tool offers
+to keep parent folders, which `usergig:` supports because the prefix is stripped and the remainder
+is joined to the gig directory.
+
+Why the embedder takes one project
+
+Batch embedding meant a failure could drop a project from the archive while the summary still
+counted it. The embedder exists for the final delivery file, so it now takes one project and
+either produces one embedded file or produces nothing and says why.
+
 ## 08-27-2026 - The embedder does samples and nothing else
 
 The 08-10 tree above still describes the format. What changed is which parts this tool acts on.

@@ -38,6 +38,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .privacy-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 8px var(--ok)}
 
+.collision-box{margin:0 0 16px;padding:13px 15px;border-radius:var(--radius-sm);
+  border:1px solid var(--bad);border-left:3px solid var(--bad);background:var(--bad-dim);
+  color:var(--text-dim);font-size:12.5px;line-height:1.6}
+.collision-box strong{display:block;color:var(--text);font-size:13.5px;margin-bottom:4px}
+.collision-box p{margin:0 0 8px}
+.amb-row{margin:0 0 9px}
+.amb-ref{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--text);margin-bottom:3px}
+.amb-row select{width:100%;padding:7px 9px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:#17191c;color:var(--text);font-size:12.5px}
 .howto{padding:13px 16px 13px 16px;border-radius:var(--radius-sm);
   background:var(--panel);border:1px solid var(--border-soft);
   color:var(--text-dim);font-size:13px;line-height:1.65;margin-bottom:26px}
@@ -196,27 +205,27 @@ td.file{white-space:normal;word-break:break-all;
   <div class="howto">
     <strong>About</strong>
     <p>This tool processes files locally in your browser and does not upload anything. It writes
-    the audio of each sample into the LMMS project file itself, so the project plays on any
-    machine with stock LMMS 1.3, with no sample folders, no relinking and nothing extra to
-    send.</p>
+    the audio of each sample into one LMMS project file, so the project plays on any machine with
+    stock LMMS 1.3, with no sample folders, no relinking and nothing extra to send. It takes one
+    final project at a time.</p>
     <strong>How to start</strong>
     <ol>
-      <li>Drag your final project file (<code>.mmpz</code> or <code>.mmp</code>) into the drop
-        zone below, or click the <b>Choose project file</b> button. A folder or ZIP of projects
-        works too.</li>
+      <li>Drag your final project file into the drop zone below, or click the
+        <b>Choose project file</b> button. One <code>.mmpz</code> or <code>.mmp</code>.</li>
       <li>Click the <b>Connect gig folder</b> button and select your LMMS gig folder, for example
         <code>Documents/lmms/samples/gig</code>. Chrome remembers it after the first time. Brave
         and Safari ask again on each visit, and their dialog says "upload" even though nothing
         leaves your machine.</li>
       <li>If a sample lives somewhere other than the gig folder, click the
-        <b>Add a sample folder</b> button and select that folder as well. Samples are matched by
-        filename.</li>
+        <b>Add a sample folder</b> button and select that folder as well.</li>
       <li>Click the <b>Check</b> button. This is a preview only, and nothing is written yet. The
-        table shows each project, how many samples will be embedded, and names anything that
-        could not be found.</li>
+        table shows how many samples will be embedded and names anything that could not be
+        found.</li>
+      <li>If a reference matches more than one file, the tool lists the candidates and waits for
+        you to pick the one you meant. It never guesses.</li>
       <li>Click the <b>Embed &amp; save</b> button. The finished project downloads
-        automatically: one project gives you one <code>-EMBEDDED.mmpz</code> file, and a folder
-        or ZIP gives you one ZIP.</li>
+        automatically as one <code>-EMBEDDED</code> file. If anything fails, no file is
+        produced and the reason is shown.</li>
       <li>Check your work. Open the downloaded project in LMMS and make sure every file loads.
         To prove the audio really travelled, move the audio files to the trash or out of the gig
         folder and open the project again. Every sample should still be there.</li>
@@ -229,18 +238,16 @@ td.file{white-space:normal;word-break:break-all;
 
   <!-- 1 : source -->
   <section class="step">
-    <div class="step-head"><span class="step-num">1</span><h2>Choose a project file, folder or ZIP</h2></div>
+    <div class="step-head"><span class="step-num">1</span><h2>Choose your final project</h2></div>
     <div id="dropzone" class="dropzone">
       <div class="dropzone-inner">
         <div class="drop-icon" aria-hidden="true"><span class="folder"></span></div>
-        <p class="drop-title">Drop a project file, folder or ZIP here</p>
+        <p class="drop-title">Drop your final project file here</p>
         <p class="drop-sub">
-          A single .mmpz or .mmp, a folder, or a ZIP
+          One .mmpz or .mmp project
         </p>
         <div class="button-row">
           <button type="button" id="pick-file">Choose project file</button>
-          <button type="button" id="pick-folder">Choose folder</button>
-          <button type="button" id="pick-zip">Choose ZIP</button>
         </div>
       </div>
     </div>
@@ -250,8 +257,6 @@ td.file{white-space:normal;word-break:break-all;
       <div class="chip-body"><span class="chip-label">Selected</span><code id="source-path"></code></div>
       <button id="clear-source" type="button" class="ghost">Change</button>
     </div>
-    <input id="file-folder" type="file" webkitdirectory directory multiple hidden />
-    <input id="file-zip" type="file" accept=".zip" hidden />
     <input id="file-project" type="file" accept=".mmpz,.mmp" hidden />
     <input id="file-samples" type="file" webkitdirectory directory multiple hidden />
   </section>
@@ -286,6 +291,12 @@ td.file{white-space:normal;word-break:break-all;
   </section>
 
   <!-- scan results -->
+  <div id="ambiguous-box" class="collision-box" hidden>
+    <strong id="ambiguous-title"></strong>
+    <p>Pick the file you meant. The choice is reused for the same reference in this run.</p>
+    <div id="ambiguous-list"></div>
+  </div>
+
   <section id="scan-panel" class="panel" hidden>
     <div class="panel-head"><h2>Check</h2><span class="panel-note">No files written yet</span></div>
     <p id="scan-headline" class="headline"></p>
@@ -310,8 +321,8 @@ td.file{white-space:normal;word-break:break-all;
   </section>
 
   <footer class="footer">
-    Use <em>Chrome, Brave or Edge</em>. Large jobs write straight to a folder you pick; other
-    browsers get a ZIP. Works offline, nothing is uploaded.
+    Use <em>Chrome, Brave or Edge</em>. The finished project downloads on its own. Works offline,
+    nothing is uploaded.
   </footer>
 </div>
 
@@ -412,89 +423,6 @@ function toBase64(bytes) {
   return btoa(s);
 }
 
-/* ---------- CRC32 + ZIP ---------- */
-
-const CRC = (() => { const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return t; })();
-const crc32 = (b) => { let c = 0xffffffff;
-  for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0; };
-
-function readZip(buffer) {
-  const bytes = new Uint8Array(buffer), view = new DataView(buffer);
-  let eocd = -1;
-  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
-    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
-  }
-  if (eocd === -1) throw new Error('not a valid ZIP (no end-of-central-directory)');
-  const count = view.getUint16(eocd + 10, true);
-  const cdOff = view.getUint32(eocd + 16, true);
-  if (count === 0xffff || cdOff === 0xffffffff) throw new Error('ZIP64 archives are not supported. Use a folder instead.');
-
-  const entries = []; let p = cdOff;
-  for (let i = 0; i < count; i++) {
-    if (view.getUint32(p, true) !== 0x02014b50) throw new Error('corrupt ZIP central directory');
-    const method = view.getUint16(p + 10, true);
-    const time = view.getUint16(p + 12, true), day = view.getUint16(p + 14, true);
-    const compSize = view.getUint32(p + 20, true);
-    const nameLen = view.getUint16(p + 28, true);
-    const extraLen = view.getUint16(p + 30, true);
-    const commentLen = view.getUint16(p + 32, true);
-    const local = view.getUint32(p + 42, true);
-    const name = new TextDecoder('utf-8').decode(bytes.subarray(p + 46, p + 46 + nameLen));
-    const lhName = view.getUint16(local + 26, true), lhExtra = view.getUint16(local + 28, true);
-    const start = local + 30 + lhName + lhExtra;
-    entries.push({ name, method, time, day, data: bytes.subarray(start, start + compSize),
-                   isDir: /\/$/.test(name) });
-    p += 46 + nameLen + extraLen + commentLen;
-  }
-  return entries;
-}
-
-const readEntry = async (e) =>
-  e.method === 0 ? e.data : e.method === 8 ? inflateRaw(e.data)
-  : (() => { throw new Error(`unsupported ZIP method ${e.method} for ${e.name}`); })();
-
-function dosNow(date = new Date()) {
-  return { time: ((date.getHours() & 31) << 11) | ((date.getMinutes() & 63) << 5) | ((date.getSeconds() / 2) & 31),
-           day: (((date.getFullYear() - 1980) & 127) << 9) | (((date.getMonth() + 1) & 15) << 5) | (date.getDate() & 31) };
-}
-
-async function makeRecord(name, bytes, times) {
-  const c = await deflateRaw(bytes);
-  return { name, method: 8, crc: crc32(bytes), compSize: c.length,
-           uncompSize: bytes.length, data: c, ...(times || {}) };
-}
-
-function buildZip(records) {
-  const fb = dosNow(); const chunks = [], central = []; let offset = 0;
-  for (const r of records) {
-    const time = r.time ?? fb.time, day = r.day ?? fb.day;
-    const nb = te.encode(r.name);
-    const lh = new Uint8Array(30 + nb.length), lv = new DataView(lh.buffer);
-    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
-    lv.setUint16(8, r.method, true); lv.setUint16(10, time, true); lv.setUint16(12, day, true);
-    lv.setUint32(14, r.crc, true); lv.setUint32(18, r.compSize, true); lv.setUint32(22, r.uncompSize, true);
-    lv.setUint16(26, nb.length, true); lh.set(nb, 30);
-    chunks.push(lh, r.data);
-    const cd = new Uint8Array(46 + nb.length), cv = new DataView(cd.buffer);
-    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
-    cv.setUint16(8, 0x0800, true); cv.setUint16(10, r.method, true);
-    cv.setUint16(12, time, true); cv.setUint16(14, day, true);
-    cv.setUint32(16, r.crc, true); cv.setUint32(20, r.compSize, true); cv.setUint32(24, r.uncompSize, true);
-    cv.setUint16(28, nb.length, true); cv.setUint32(42, offset, true); cd.set(nb, 46);
-    central.push(cd);
-    offset += lh.length + r.data.length;
-  }
-  let cs = 0; for (const c of central) cs += c.length;
-  const eo = new Uint8Array(22), ev = new DataView(eo.buffer);
-  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, records.length, true);
-  ev.setUint16(10, records.length, true); ev.setUint32(12, cs, true); ev.setUint32(16, offset, true);
-  return new Blob([...chunks, ...central, eo], { type: 'application/zip' });
-}
-
 /* ---------- LMMS reference handling ---------- */
 
 const SAMPLE_NODES = ['audiofileprocessor', 'sampleclip', 'sampletco', 'slicert'];
@@ -546,58 +474,10 @@ function collectRefs(xml) {
 }
 
 
-/* ---------- LMMS 1.2 compatibility ---------- */
-
-// Elements that only exist from 1.3 onward. If a project genuinely contains
-// these, no amount of header rewriting makes 1.2 able to open it.
-const LMMS13_ONLY = ['midiclip', 'automationclip', 'mixer', 'mixerchannel', 'sampleclip'];
-
-/** What, if anything, stops this project loading cleanly in LMMS 1.2. */
-function inspectCompat(xml) {
-  const blockers = LMMS13_ONLY.filter((t) => new RegExp('<' + t + '\\b').test(xml));
-  const nodes = xml.match(/<midicontrollers\b[^>]*>/g) || [];
-  // Only safe to drop when every CC value is zero, otherwise it carries real
-  // MIDI assignments.
-  const empty = nodes.filter((n) => [...n.matchAll(/="([^"]*)"/g)].every((m) => m[1] === '0'));
-  const header = (xml.match(/<lmms-project[^>]*>/) || [''])[0];
-  return {
-    blockers,
-    midiControllers: nodes.length,
-    removable: empty.length,
-    claims13: /creatorversion="1\.3/.test(header),
-  };
-}
-
-/**
- * Remove the 1.3-only bits that stop 1.2 opening a project cleanly.
- * The header is only reverted when the body carries no 1.3-only elements,
- * because relabelling a genuinely 1.3 project would make it fail worse.
- */
-function makeCompat12(xml) {
-  const before = inspectCompat(xml);
-  let out = xml;
-
-  if (before.removable === before.midiControllers && before.midiControllers > 0) {
-    out = out.replace(/\s*<midicontrollers\b[^>]*\/>/g, '')
-             .replace(/\s*<midicontrollers\b[^>]*>[\s\S]*?<\/midicontrollers>/g, '');
-  }
-
-  let headerChanged = false;
-  if (before.blockers.length === 0 && before.claims13) {
-    out = out.replace(/(<lmms-project[^>]*)>/, (m, head) => {
-      headerChanged = true;
-      return head.replace(/creatorversion="[^"]*"/, 'creatorversion="1.2.2"')
-                 .replace(/\bversion="[^"]*"/, 'version="1.0"') + '>';
-    });
-  }
-
-  return { xml: out, removed: before.removable, headerChanged, blockers: before.blockers };
-}
-
 /* ---------- app state ---------- */
 
 const state = { kind: null, label: '', items: [], samples: new Map(),
-                scanned: null, output: null,
+                scanned: null, output: null, choices: new Map(), ambiguous: [],
                 gigHandle: null, gigCount: 0 };
 
 const $ = (id) => document.getElementById(id);
@@ -605,18 +485,60 @@ const setStatus = (m, tone = '') => { $('status').textContent = m || ''; $('stat
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 
-function addSample(name, getBytes) {
-  if (!AUDIO_EXT.test(name) || isMacJunk(name)) return;
-  const base = name.split('/').pop();
-  if (!state.samples.has(base)) state.samples.set(base, getBytes);
-  const lower = base.toLowerCase();
-  if (!state.samples.has(lower)) state.samples.set(lower, getBytes);
-}
-const findSample = (name) => state.samples.get(name) || state.samples.get(name.toLowerCase()) || null;
+/* CORE START: pure logic, also loaded directly by tests/embedindex.test.js */
 
-/* Re-registers the audio that came in with the source, after the map is cleared. */
-function reindexSource() {
-  for (const it of state.items) if (!it.isDir) addSample(it.name, it.getBytes);
+/* Files are indexed by their full relative path, not just their name, so two
+   folders holding a Kick.wav stay separable. A reference is matched by exact
+   path first, then by the longest path suffix that only one file answers to,
+   and by bare filename only when exactly one file carries it. Anything still
+   plural is ambiguous and is put to the user rather than guessed at. */
+const normPath = (p) => String(p).replace(/\\/g, '/').replace(/^\.\//, '');
+const segmentsOf = (p) => normPath(p).split('/').filter(Boolean);
+
+function indexKey(relPath) {
+  return normPath(relPath).toLowerCase();
+}
+
+/* Every suffix of a path, longest first: a/b/c.wav, b/c.wav, c.wav */
+function suffixes(relPath) {
+  const seg = segmentsOf(relPath);
+  const out = [];
+  for (let i = 0; i < seg.length; i++) out.push(seg.slice(i).join('/'));
+  return out;
+}
+
+function resolveSample(src, samples, choices) {
+  const chosen = choices && choices.get(src);
+  if (chosen && samples.has(chosen)) {
+    return { status: 'found', key: chosen, getBytes: samples.get(chosen) };
+  }
+
+  const wanted = normPath(xmlUnescape(String(src)).replace(LMMS_PREFIX, ''));
+  const keys = [...samples.keys()];
+  const lower = indexKey(wanted);
+
+  const exact = keys.filter((k) => indexKey(k) === lower);
+  if (exact.length === 1) return { status: 'found', key: exact[0], getBytes: samples.get(exact[0]) };
+  if (exact.length > 1) return { status: 'ambiguous', candidates: exact };
+
+  for (const suffix of suffixes(wanted)) {
+    const want = suffix.toLowerCase();
+    const hits = keys.filter((k) => {
+      const ks = indexKey(k);
+      return ks === want || ks.endsWith('/' + want);
+    });
+    if (hits.length === 1) return { status: 'found', key: hits[0], getBytes: samples.get(hits[0]) };
+    if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
+  }
+  return { status: 'missing', candidates: [] };
+}
+
+/* CORE END */
+
+function addSample(relPath, getBytes) {
+  const clean = normPath(relPath);
+  if (!AUDIO_EXT.test(clean) || isMacJunk(clean)) return;
+  if (!state.samples.has(clean)) state.samples.set(clean, getBytes);
 }
 
 /* ---------- remembered gig folder ---------- */
@@ -643,12 +565,13 @@ const idbDel = async (k) => { const db = await idb(); return new Promise((res, r
   const t = db.transaction(GIG_STORE, 'readwrite');
   t.objectStore(GIG_STORE).delete(k); t.oncomplete = res; t.onerror = () => rej(t.error); }); };
 
-async function indexDirectory(handle) {
+async function indexDirectory(handle, prefix = '') {
   let n = 0;
   for await (const [name, h] of handle.entries()) {
-    if (h.kind === 'directory') { n += await indexDirectory(h); continue; }
+    const rel = prefix ? `${prefix}/${name}` : name;
+    if (h.kind === 'directory') { n += await indexDirectory(h, rel); continue; }
     if (!AUDIO_EXT.test(name)) continue;
-    addSample(name, async () => new Uint8Array(await (await h.getFile()).arrayBuffer()));
+    addSample(rel, async () => new Uint8Array(await (await h.getFile()).arrayBuffer()));
     n++;
   }
   return n;
@@ -695,7 +618,7 @@ $('forget-gig').addEventListener('click', async () => {
   state.gigHandle = null; state.gigCount = 0;
   try { await idbDel(GIG_KEY); } catch {}
   state.samples.clear(); state.scanned = null;
-  paintGig(); reindexSource(); refreshSamples(); refresh();
+  paintGig(); refreshSamples(); refresh();
   setStatus('gig folder forgotten');
 });
 
@@ -761,39 +684,9 @@ $('clear-source').addEventListener('click', () => {
 
 /* ---------- input ---------- */
 
-async function useZip(file) {
-  setStatus('reading archive…');
-  const entries = readZip(await file.arrayBuffer());
-  const items = entries.map((e) => ({
-    name: e.name, isDir: e.isDir, times: { time: e.time, day: e.day },
-    getBytes: () => readEntry(e),
-    passthrough: (isProjectFile(e.name) || e.isDir) ? null : {
-      name: e.name, method: e.method, crc: new DataView(new Uint8Array(4).buffer).getUint32(0),
-      data: e.data, time: e.time, day: e.day,
-    },
-    raw: e,
-  }));
-  for (const it of items) if (!it.isDir) addSample(it.name, it.getBytes);
-  setSource('zip', file.name, items);
-  setStatus('');
-}
-
-function useFolder(files, label) {
-  const items = [...files].map((f) => ({
-    name: f.webkitRelativePath || f.name, isDir: false,
-    times: dosNow(new Date(f.lastModified)),
-    getBytes: async () => new Uint8Array(await f.arrayBuffer()),
-    passthrough: null, file: f,
-  }));
-  for (const it of items) addSample(it.name, it.getBytes);
-  setSource('folder', label, items);
-  setStatus('');
-}
-
 function useProjectFile(f) {
   if (!isProjectFile(f.name)) { setDropError('That is not an LMMS project file (.mmpz or .mmp).'); return; }
   const items = [{ name: f.name, isDir: false,
-    times: dosNow(new Date(f.lastModified)),
     getBytes: async () => new Uint8Array(await f.arrayBuffer()),
     passthrough: null, file: f }];
   setSource('file', f.name, items);
@@ -804,23 +697,13 @@ $('pick-file').addEventListener('click', () => $('file-project').click());
 $('file-project').addEventListener('change', (e) => {
   if (e.target.files[0]) useProjectFile(e.target.files[0]);
 });
-$('pick-folder').addEventListener('click', () => $('file-folder').click());
-$('pick-zip').addEventListener('click', () => $('file-zip').click());
 $('pick-samples').addEventListener('click', () => $('file-samples').click());
 
-$('file-folder').addEventListener('change', (e) => {
-  if (!e.target.files.length) return;
-  const root = (e.target.files[0].webkitRelativePath || '').split('/')[0] || 'folder';
-  useFolder(e.target.files, root);
-});
-$('file-zip').addEventListener('change', (e) => {
-  if (e.target.files[0]) useZip(e.target.files[0]).catch((err) => setDropError(err.message));
-});
 $('file-samples').addEventListener('change', (e) => {
   let added = 0;
   for (const f of e.target.files) {
     if (!AUDIO_EXT.test(f.name)) continue;
-    addSample(f.name, async () => new Uint8Array(await f.arrayBuffer()));
+    addSample(f.webkitRelativePath || f.name, async () => new Uint8Array(await f.arrayBuffer()));
     added++;
   }
   state.scanned = null;
@@ -846,9 +729,8 @@ $('file-samples').addEventListener('change', (e) => {
 document.addEventListener('drop', async (e) => {
   const f = e.dataTransfer?.files[0];
   if (!f) return;
-  if (/\.zip$/i.test(f.name)) { try { await useZip(f); } catch (err) { setDropError(err.message); } }
-  else if (isProjectFile(f.name)) useProjectFile(f);
-  else setDropError('Drop a .mmpz, .mmp or ZIP file, or use the Choose folder button.');
+  if (isProjectFile(f.name)) useProjectFile(f);
+  else setDropError('Drop one .mmpz or .mmp project file.');
 });
 
 /* Every project in the source gets embedded. One final project is one
@@ -857,10 +739,33 @@ function targets() {
   return state.items.filter((i) => isProjectFile(i.name) && !i.isDir);
 }
 
+function paintAmbiguous(list) {
+  state.ambiguous = list;
+  const box = $('ambiguous-box');
+  if (!list.length) { box.hidden = true; return; }
+  $('ambiguous-title').textContent = `${list.length} reference(s) match more than one file`;
+  $('ambiguous-list').innerHTML = list.map((a, i) => {
+    const opts = a.candidates.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    return `<div class="amb-row"><span class="amb-ref">${esc(a.src)}</span>` +
+      `<select data-amb="${i}"><option value="">Choose the file you meant</option>${opts}</select></div>`;
+  }).join('');
+  for (const sel of $('ambiguous-list').querySelectorAll('select')) {
+    sel.addEventListener('change', () => {
+      const a = list[Number(sel.dataset.amb)];
+      if (sel.value) state.choices.set(a.src, sel.value);
+      else state.choices.delete(a.src);
+      state.scanned = null;
+      refresh();
+    });
+  }
+  box.hidden = false;
+}
+
 function refresh() {
   const ready = SUPPORTED && state.items.length > 0 && targets().length > 0;
   $('scan-btn').disabled = !ready;
-  $('run-btn').disabled = !(ready && state.scanned && state.scanned.embeddable > 0);
+  const unresolved = (state.ambiguous || []).some((a) => !state.choices.has(a.src));
+  $('run-btn').disabled = !(ready && state.scanned && state.scanned.embeddable > 0 && !unresolved);
 }
 
 /* ---------- scan ---------- */
@@ -873,7 +778,7 @@ $('scan-btn').addEventListener('click', async () => {
   $('progress').hidden = false; $('result-panel').hidden = true;
 
   if (state.gigHandle) {
-    state.samples.clear(); reindexSource();
+    state.samples.clear();
     try { state.gigCount = await indexDirectory(state.gigHandle); } catch {}
     paintGig(); refreshSamples();
   }
@@ -881,8 +786,7 @@ $('scan-btn').addEventListener('click', async () => {
   const rows = [];
   let refs = 0, embeddable = 0, missingTotal = 0, factoryTotal = 0, emptyTotal = 0;
   const missingNames = new Set();
-  const blockers13 = new Set();
-  let ccTotal = 0;
+  const ambiguousRefs = [];
 
   try {
     const list = targets();
@@ -892,22 +796,26 @@ $('scan-btn').addEventListener('click', async () => {
       try {
         const bytes = await item.getBytes();
         const xml = td.decode(isCompressedName(item.name) ? await decompressMmpz(bytes) : bytes);
-        let found = 0, missing = 0, factory = 0, empty = 0;
+        let found = 0, missing = 0, factory = 0, empty = 0, ambiguous = 0;
         for (const src of collectRefs(xml)) {
           if (!src) { empty++; continue; }
           if (isFactory(src)) { factory++; continue; }
-          const n = sampleNameOf(src);
-          if (findSample(n)) found++; else { missing++; missingNames.add(n); }
+          const hit = resolveSample(src, state.samples, state.choices);
+          if (hit.status === 'found') found++;
+          else if (hit.status === 'ambiguous') {
+            ambiguous++;
+            if (!ambiguousRefs.some((a) => a.src === src)) {
+              ambiguousRefs.push({ src, candidates: hit.candidates });
+            }
+          } else { missing++; missingNames.add(sampleNameOf(src)); }
         }
-        const compat = inspectCompat(xml);
-        if (compat.blockers.length) blockers13.add(compat.blockers.join(', '));
-        ccTotal += compat.removable;
-
-        row.refs = found + missing + factory;
+        row.ambiguous = ambiguous;
+        row.refs = found + missing + factory + ambiguous;
         row.found = found;
         refs += row.refs; embeddable += found; missingTotal += missing;
         factoryTotal += factory; emptyTotal += empty;
-        if (missing) { row.status = 'MISSING'; row.detail = `${missing} sample(s) not found`; }
+        if (ambiguous) { row.status = 'AMBIGUOUS'; row.detail = `${ambiguous} reference(s) match more than one file`; }
+        else if (missing) { row.status = 'MISSING'; row.detail = `${missing} sample(s) not found`; }
         else if (!found && factory) { row.status = 'FACTORY ONLY'; row.detail = 'uses only LMMS built-in samples'; }
         else if (!found) { row.status = 'NO SAMPLES'; row.detail = empty ? `${empty} empty slot(s)` : 'nothing to embed'; }
         else row.detail = `${found} will be embedded`;
@@ -940,10 +848,10 @@ $('scan-btn').addEventListener('click', async () => {
         `${missingNames.size > 6 ? ', and others' : ''}. ` +
         `Connect the gig folder or add a sample folder above, then Check again.`;
       advice.hidden = false;
-    } else if (blockers13.size) {
+    } else if (ambiguousRefs.length) {
       advice.className = 'advice bad';
-      advice.innerHTML = 'All samples found. <strong>Note:</strong> uses LMMS 1.3 features ' +
-        `(<code>${esc([...blockers13].join(', '))}</code>) that LMMS 1.2 cannot open at all.`;
+      advice.innerHTML = `<strong>${ambiguousRefs.length} reference(s) match more than one file.</strong> ` +
+        'Pick the file you meant for each one below, then Check again.';
       advice.hidden = false;
     } else if (embeddable) {
       advice.className = 'advice good';
@@ -956,6 +864,7 @@ $('scan-btn').addEventListener('click', async () => {
       <td><span class="badge ${r.status === 'OK' ? 'ok' : r.status === 'MISSING' || r.status === 'ERROR' ? 'bad' : 'dim'}">${esc(r.status)}</span>
       <div class="hint" style="margin:2px 0 0">${esc(r.detail)}</div></td></tr>`).join('');
 
+    paintAmbiguous(ambiguousRefs);
     $('scan-panel').hidden = false;
     setStatus(missingTotal ? 'Check complete. Some samples were not located.' : 'Check complete. Ready to embed.',
       missingTotal ? 'error' : 'done');
@@ -981,7 +890,7 @@ function checkPayloadSize(xml, cache) {
   for (const tag of xml.match(NODE_RE) || []) {
     const m = tag.match(/\bsrc="([^"]*)"/);
     if (!m || !m[1] || isFactory(m[1])) continue;
-    const name = sampleNameOf(m[1]);
+    const name = m[1];
     const b64 = cache.get(name);
     if (!b64) continue;
     const copies = /^<(sampleclip|sampletco)\b/.test(tag) ? 1 : 2;
@@ -1002,17 +911,17 @@ function checkPayloadSize(xml, cache) {
 }
 
 async function embedXml(xml, cache, counters) {
-  const names = new Set();
+  const wanted = new Set();
   for (const src of collectRefs(xml)) {
-    if (src && !isFactory(src)) names.add(sampleNameOf(src));
+    if (src && !isFactory(src)) wanted.add(src);
   }
-  for (const n of names) {
-    if (cache.has(n)) continue;
-    const getBytes = findSample(n);
-    if (!getBytes) { cache.set(n, null); continue; }
+  for (const src of wanted) {
+    if (cache.has(src)) continue;
+    const hit = resolveSample(src, state.samples, state.choices);
+    if (hit.status !== 'found') { cache.set(src, null); continue; }
     try {
-      cache.set(n, toBase64((await decodeToFrames(await getBytes())).frames));
-    } catch { cache.set(n, null); }
+      cache.set(src, toBase64((await decodeToFrames(await hit.getBytes())).frames));
+    } catch { cache.set(src, null); }
   }
 
   counters.projected = checkPayloadSize(xml, cache);
@@ -1020,7 +929,7 @@ async function embedXml(xml, cache, counters) {
   return xml.replace(TAG_RE, (whole, tag, before, src, after) => {
     if (!src) { counters.empty++; return whole; }
     if (isFactory(src)) { counters.factory++; return whole; }
-    const b64 = cache.get(sampleNameOf(src));
+    const b64 = cache.get(src);
     if (!b64) { counters.missing++; return whole; }
     counters.embedded++;
     const selfClosing = /\/\s*$/.test(after);
@@ -1042,92 +951,65 @@ async function embedXml(xml, cache, counters) {
 }
 
 $('run-btn').addEventListener('click', async () => {
-  const outName = `${state.label.replace(/\.(zip|mmpz|mmp)$/i, '')}-EMBEDDED`;
+  const item = targets()[0];
+  if (!item) { setStatus('No project selected.', 'error'); return; }
+  const outName = `${state.label.replace(/\.(mmpz|mmp)$/i, '')}-EMBEDDED`;
 
   setStatus('embedding…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
   $('progress').hidden = false;
+  $('download-btn').hidden = true;
+  $('result-panel').hidden = true;
+  state.output = null;
 
   const cache = new Map();
   const counters = { embedded: 0, missing: 0, empty: 0, factory: 0 };
-  const chosen = new Set(targets().map((t) => t.name));
-  const records = [];
-  let written = 0, failed = 0, bytesOut = 0;
-
-  const outFiles = [];
-  const writeOut = async (relPath, bytes) => {
-    bytesOut += bytes.length;
-    outFiles.push({ relPath, bytes });
-    records.push(await makeRecord(`${outName}/${relPath}`, bytes));
-  };
 
   try {
-    for (let i = 0; i < state.items.length; i++) {
-      const item = state.items[i];
-      if (item.isDir) continue;
+    const bytes = await item.getBytes();
+    const compressed = isCompressedName(item.name);
+    const xml = td.decode(compressed ? await decompressMmpz(bytes) : bytes);
+    const updated = await embedXml(xml, cache, counters);
 
-      try {
-        if (isProjectFile(item.name) && chosen.has(item.name)) {
-          const bytes = await item.getBytes();
-          const compressed = isCompressedName(item.name);
-          const xml = td.decode(compressed ? await decompressMmpz(bytes) : bytes);
-          let updated = await embedXml(xml, cache, counters);
-
-          // A node that kept src would make LMMS ignore the embedded audio.
-          if (/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(updated)) {
-            throw new Error('src left alongside sampledata');
-          }
-
-          // Samples only. Version compatibility (midicontrollers stripping,
-          // header relabelling) is deliberately not this tool's job.
-          const outBytes = te.encode(updated);
-          await writeOut(item.name, compressed ? await compressMmpz(outBytes) : outBytes);
-          written++;
-        } else {
-          // Everything else is copied through byte-for-byte.
-          await writeOut(item.name, await item.getBytes());
-        }
-      } catch (err) {
-        failed++;
-        console.error(item.name, err);
-      }
-
-      $('progress-bar').style.width = `${Math.round(((i + 1) / state.items.length) * 100)}%`;
-      if (i % 3 === 0) { setStatus(`embedding… ${i + 1} of ${state.items.length}`); await new Promise(r => setTimeout(r)); }
+    // A node that kept src would make LMMS ignore the embedded audio.
+    if (/<audiofileprocessor[^>]*\bsrc="[^"]+"[^>]*sampledata=/.test(updated)) {
+      throw new Error('a sample kept its path alongside the embedded audio');
+    }
+    if (!counters.embedded) {
+      throw new Error('No samples could be embedded. Nothing was written.');
     }
 
-    // One project in, one file out. Anything more is a ZIP. Either way it goes
-    // through the browser's own download, which lands in Downloads with no
-    // folder dialog: Chrome refuses to grant a page write access to Downloads
-    // and some other folders, so asking was a dead end.
-    if (outFiles.length === 1) {
-      const ext = (outFiles[0].relPath.match(/\.(mmpz|mmp)(\.bak)?$/i) || ['.mmpz'])[0];
-      state.output = new Blob([outFiles[0].bytes]);
-      $('output-name').textContent = `${outName}${ext.startsWith('.') ? ext : '.' + ext}`;
-    } else {
-      setStatus('building archive…');
-      state.output = buildZip(records);
-      $('output-name').textContent = `${outName}.zip`;
-    }
+    const outBytes = te.encode(updated);
+    const payload = compressed ? await compressMmpz(outBytes) : outBytes;
+
+    // Read the result back before offering it, so a broken file is never
+    // handed over as a finished one.
+    const roundTrip = td.decode(compressed ? await decompressMmpz(payload) : payload);
+    if (roundTrip !== updated) throw new Error('the written project did not read back identically');
+
+    state.output = new Blob([payload]);
+    $('output-name').textContent = `${outName}${compressed ? '.mmpz' : '.mmp'}`;
     $('download-btn').hidden = false;
     $('result-hint').textContent = '';
-    $('download-btn').click();
 
     $('result-summary').innerHTML = [
-      stat(written, 'projects embedded', 'good'),
-      stat(counters.embedded, 'samples written in', 'accent'),
-      stat(counters.missing, 'missing', counters.missing ? 'bad' : ''),
-      stat(state.items.length - written, 'files copied through'),
-      stat(mb(bytesOut), 'total size'),
+      stat(counters.embedded, 'samples embedded', 'good'),
+      stat(counters.missing, 'not found', counters.missing ? 'bad' : ''),
+      stat(counters.factory, 'LMMS built-ins left alone'),
+      stat(mb(payload.length), 'file size'),
     ].join('');
     $('result-note').textContent = counters.missing
-      ? 'Some samples were not found'
-      : 'Source files not modified';
+      ? 'Some samples were not found and kept their paths'
+      : 'Your original project was not modified';
     $('result-panel').hidden = false;
     $('result-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    setStatus(failed || counters.missing ? 'Finished with errors. See the summary above.' : 'Done.',
-      failed || counters.missing ? 'error' : 'done');
+    setStatus(counters.missing ? 'Finished, some samples were not found.' : 'Done.',
+      counters.missing ? 'error' : 'done');
+    $('download-btn').click();
   } catch (err) {
+    state.output = null;
+    $('download-btn').hidden = true;
+    $('result-panel').hidden = true;
     setStatus(err.message, 'error');
   } finally { $('progress').hidden = true; refresh(); }
 });

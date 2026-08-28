@@ -20,21 +20,27 @@ Two situations, two different fixes:
 
 Relinking fixes YOUR machine. Embedding makes a file that works anywhere.
 
+The relinker rewrites samples to `usergig:<file name>`, which LMMS resolves through the gig
+directory set in its own preferences. A bare `gig/` path is not equivalent: it goes through the
+legacy relative upgrade, which resolves against the user samples directory and only when the file
+already exists. Measured in LMMS 1.3 with `gigdir` pointed outside the samples directory, the bare
+form produced 22 read failures and silence where `usergig:` loaded the sample.
+
 ## The tools
 
 Single HTML files. No install. Open one in a browser, works offline.
 
-**`web/lmms-path-relinker.html`** — rewrites sample path roots across hundreds of projects at once.
+**`web/lmms-path-relinker.html`** - rewrites sample path roots across hundreds of projects at once.
 Give it the broken folder and the correct one. Scan first, it's read-only and shows exactly what
 will change.
 
-**`web/lmms-sample-embedder.html`** — writes the audio INTO the project file, so there's nothing
+**`web/lmms-sample-embedder.html`** - writes the audio INTO the project file, so there's nothing
 left to resolve. No sample folder, no `resources` folder, no path to break. Writes both `sampledata`
-and `srcdata`, so the audio plays in 1.2 and 1.3 alike. The project body still has to be 1.2 shaped
-for 1.2 to open it at all, which means authored there rather than round-tripped through 1.3. Takes
-a single `.mmpz` or `.mmp`, a folder, or a ZIP; every project in the source gets embedded.
+and `srcdata`, so the audio plays in 1.2 and 1.3 alike. Takes one final project, a single `.mmpz`
+or `.mmp`, and gives back one embedded project. A reference matching more than one file on disk is
+reported and put to the user rather than guessed at.
 
-**`web/lmms-tools.html`** — both tools in one file, on two tabs. They are independent: Relink for a
+**`web/lmms-tools.html`** - both tools in one file, on two tabs. They are independent: Relink for a
 whole folder of projects, Embed for the one final project going out. Neither tab needs the other to
 have run first.
 
@@ -66,7 +72,7 @@ All of this was checked against the real binary and real project files, not assu
 `C:\Users\You\Desktop\Audio\` is sitting in the file as `C:/Users/You/Desktop/Audio/`. So pasting
 the path straight out of the LMMS error dialog matches nothing. These tools match both directions.
 
-**`.mmpz` is Qt `qCompress`** — 4-byte big-endian uncompressed length, then a plain zlib stream.
+**`.mmpz` is Qt `qCompress`** - 4-byte big-endian uncompressed length, then a plain zlib stream.
 Not gzip, not a ZIP archive.
 
 **`src` beats `sampledata`.** To embed audio the `src` attribute has to be REMOVED, not blanked, or
