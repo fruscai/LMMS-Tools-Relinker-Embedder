@@ -117,9 +117,24 @@ test('several colliding names are each reported', () => {
   assert.deepStrictEqual([...collisions].map((c) => c.name).sort(), ['Kick.wav', 'Snare.wav']);
 });
 
-test('names differing only by case are kept apart', () => {
+test('names differing only by case collide, because most filesystems agree', () => {
   const refs = ['A/Kick.wav', 'B/kick.wav'];
-  assert.strictEqual(R.planTargets(refs, 0).collisions.length, 0);
+  const { collisions } = R.planTargets(refs, 0);
+  assert.strictEqual(collisions.length, 1);
+  assert.strictEqual(collisions[0].owners.length, 2);
+});
+
+test('a case-only collision keeps each original spelling in the output', () => {
+  const refs = ['A/Kick.wav', 'B/kick.wav'];
+  const deeper = R.resolveDepth(refs);
+  assert.strictEqual(deeper.collisions.length, 0);
+  assert.strictEqual(deeper.plan.get('A/Kick.wav'), 'usergig:A/Kick.wav');
+  assert.strictEqual(deeper.plan.get('B/kick.wav'), 'usergig:B/kick.wav');
+});
+
+test('one file referenced with two spellings is still a collision', () => {
+  const { collisions } = R.planTargets(['Old/Kick.wav', 'New/KICK.WAV'], 0);
+  assert.strictEqual(collisions.length, 1);
 });
 
 test('the integrity check passes a correct rewrite', () => {

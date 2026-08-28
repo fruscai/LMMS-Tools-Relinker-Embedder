@@ -2,6 +2,22 @@
 
 ## 08-28-2026
 
+One project's answers do not belong to the next
+
+- Ambiguity choices, the scan, the output and the download survived into a newly loaded project.
+  A second project naming `usergig:Kick.wav` inherited whichever file was picked for the first
+  one, so the wrong audio could be embedded without a prompt
+- Loading a project now clears the choices, the ambiguity list, the scan, the output and the
+  panels. Pressing Check again on the same project still keeps the choices, which is the point of
+  recording them
+
+Case-only names collide
+
+- `usergig:Kick.wav` and `usergig:kick.wav` are one destination on macOS and Windows. The claim
+  check compared them exactly, so two different samples could both be sent to the same file
+- Claims are keyed without case now. The original spelling is kept for the output and the report,
+  so the repaired project still reads `usergig:B/kick.wav`
+
 The gig folder reference was the wrong form
 
 - BIG ONE: **`gig/<name>` does not point at the configured gig folder.** LMMS resolves an

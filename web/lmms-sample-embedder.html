@@ -533,6 +533,18 @@ function resolveSample(src, samples, choices) {
   return { status: 'missing', candidates: [] };
 }
 
+/* Everything below belongs to one project. A different project must not inherit
+   the previous ambiguity choices, scan or output, or the user would embed with
+   a decision they made about a different file. Pressing Check again on the same
+   project keeps the choices, which is why this runs on load and not on scan. */
+function resetProjectState(state) {
+  state.choices.clear();
+  state.ambiguous = [];
+  state.scanned = null;
+  state.output = null;
+  return state;
+}
+
 /* CORE END */
 
 function addSample(relPath, getBytes) {
@@ -675,7 +687,10 @@ function setSource(kind, label, items) {
 }
 
 $('clear-source').addEventListener('click', () => {
-  state.items = []; state.samples.clear(); state.scanned = null;
+  state.items = []; state.samples.clear();
+  resetProjectState(state);
+  $('download-btn').hidden = true;
+  $('ambiguous-box').hidden = true;
   if (state.gigHandle) { indexDirectory(state.gigHandle).then((n) => { state.gigCount = n; paintGig(); refreshSamples(); }); }
   $('source-chip').hidden = true; $('dropzone').hidden = false;
   $('scan-panel').hidden = true; $('result-panel').hidden = true;
@@ -686,6 +701,13 @@ $('clear-source').addEventListener('click', () => {
 
 function useProjectFile(f) {
   if (!isProjectFile(f.name)) { setDropError('That is not an LMMS project file (.mmpz or .mmp).'); return; }
+  resetProjectState(state);
+  $('download-btn').hidden = true;
+  $('result-panel').hidden = true;
+  $('ambiguous-box').hidden = true;
+  $('scan-panel').hidden = true;
+  $('progress').hidden = true;
+  $('progress-bar').style.width = '0%';
   const items = [{ name: f.name, isDir: false,
     getBytes: async () => new Uint8Array(await f.arrayBuffer()),
     passthrough: null, file: f }];

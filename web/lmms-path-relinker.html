@@ -858,12 +858,16 @@ function planTargets(refs, keepParents) {
   for (const src of distinct) {
     const name = depthOf(src);
     plan.set(src, GIG_PREFIX + name);
-    if (!claims.has(name)) claims.set(name, []);
-    claims.get(name).push(src);
+    // Kick.wav and kick.wav are one file on macOS and Windows, so the claim is
+    // keyed without case. The spelling itself is kept for the output and the
+    // report.
+    const key = name.toLowerCase();
+    if (!claims.has(key)) claims.set(key, { name, owners: [] });
+    claims.get(key).owners.push(src);
   }
-  const collisions = [...claims.entries()]
-    .filter(([, owners]) => owners.length > 1)
-    .map(([name, owners]) => ({ name, owners }));
+  const collisions = [...claims.values()]
+    .filter((c) => c.owners.length > 1)
+    .map((c) => ({ name: c.name, owners: c.owners }));
   return { plan, collisions };
 }
 

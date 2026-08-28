@@ -101,3 +101,42 @@ test('an escaped ampersand from the raw XML resolves to the real filename', () =
 test('path suffixes are produced longest first', () => {
   assert.deepStrictEqual([...E.suffixes('a/b/c.wav')], ['a/b/c.wav', 'b/c.wav', 'c.wav']);
 });
+
+test('a new project clears the previous ambiguity choices and output', () => {
+  const state = {
+    choices: new Map([['usergig:Kick.wav', 'A/Kick.wav']]),
+    ambiguous: [{ src: 'usergig:Kick.wav', candidates: ['A/Kick.wav', 'B/Kick.wav'] }],
+    scanned: { rows: [] },
+    output: { size: 1 },
+  };
+  E.resetProjectState(state);
+  assert.strictEqual(state.choices.size, 0);
+  assert.strictEqual(state.ambiguous.length, 0);
+  assert.strictEqual(state.scanned, null);
+  assert.strictEqual(state.output, null);
+});
+
+test('a choice survives a second check on the same project', () => {
+  const samples = index('A/Kick.wav', 'B/Kick.wav');
+  const choices = new Map();
+  const first = E.resolveSample('usergig:Kick.wav', samples, choices);
+  assert.strictEqual(first.status, 'ambiguous');
+
+  choices.set('usergig:Kick.wav', 'B/Kick.wav');
+  // Check again, same project, nothing reset.
+  const second = E.resolveSample('usergig:Kick.wav', samples, choices);
+  assert.strictEqual(second.status, 'found');
+  assert.strictEqual(second.key, 'B/Kick.wav');
+  const third = E.resolveSample('usergig:Kick.wav', samples, choices);
+  assert.strictEqual(third.key, 'B/Kick.wav');
+});
+
+test('the same reference in a different project starts unresolved', () => {
+  const samples = index('A/Kick.wav', 'B/Kick.wav');
+  const state = { choices: new Map([['usergig:Kick.wav', 'B/Kick.wav']]), ambiguous: [],
+                  scanned: {}, output: { size: 1 } };
+  E.resetProjectState(state);
+  const after = E.resolveSample('usergig:Kick.wav', samples, state.choices);
+  assert.strictEqual(after.status, 'ambiguous');
+  assert.strictEqual(state.output, null);
+});
