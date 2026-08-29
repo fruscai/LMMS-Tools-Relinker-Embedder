@@ -855,6 +855,11 @@ function planTargets(refs, keepParents) {
   };
   const plan = new Map();
   const claims = new Map();
+  // One real file can appear under more than one spelling, C:/Samples/Kick.wav
+  // and c:\samples\Kick.wav being the same file on Windows. Owners are counted
+  // by that identity so two spellings of one file are not read as two files,
+  // while every spelling still gets its own plan entry to rewrite.
+  const identityOf = (src) => normalizeSlashes(src).toLowerCase();
   for (const src of distinct) {
     const name = depthOf(src);
     plan.set(src, GIG_PREFIX + name);
@@ -862,12 +867,14 @@ function planTargets(refs, keepParents) {
     // keyed without case. The spelling itself is kept for the output and the
     // report.
     const key = name.toLowerCase();
-    if (!claims.has(key)) claims.set(key, { name, owners: [] });
-    claims.get(key).owners.push(src);
+    if (!claims.has(key)) claims.set(key, { name, owners: new Map() });
+    const claim = claims.get(key);
+    const id = identityOf(src);
+    if (!claim.owners.has(id)) claim.owners.set(id, src);
   }
   const collisions = [...claims.values()]
-    .filter((c) => c.owners.length > 1)
-    .map((c) => ({ name: c.name, owners: c.owners }));
+    .filter((c) => c.owners.size > 1)
+    .map((c) => ({ name: c.name, owners: [...c.owners.values()] }));
   return { plan, collisions };
 }
 
@@ -955,7 +962,6 @@ async function scanAll(settings, onProgress) {
   let mmp = 0, mmpz = 0;
 
   const tx = makeTransform(settings);
-  const collisionMap = new Map();
   const allRefs = [];
 
   for (let i = 0; i < projects.length; i++) {
@@ -973,13 +979,7 @@ async function scanAll(settings, onProgress) {
         entry.status = 'INVALID PROJECT';
         entry.message = validation.reason;
       } else {
-        if (tx.auto) {
-          allRefs.push(...collectRefs(text));
-          for (const c of planTargets(collectRefs(text), tx.keepParents).collisions) {
-            if (!collisionMap.has(c.name)) collisionMap.set(c.name, new Set());
-            for (const o of c.owners) collisionMap.get(c.name).add(o);
-          }
-        }
+        if (tx.auto) allRefs.push(...collectRefs(text));
         const r = tx.apply(text);
         entry.occurrences = r.occurrences;
         entry.byVariant = r.byVariant;
@@ -1006,7 +1006,7 @@ async function scanAll(settings, onProgress) {
       foldersScanned: new Set(projects.map((p) => p.name.split('/').slice(0, -1).join('/'))).size,
       projectsWithMatches, projectsWithoutMatches: projects.length - projectsWithMatches,
       totalOccurrences, example,
-      collisions: [...collisionMap.entries()].map(([name, owners]) => ({ name, owners: [...owners] })),
+      collisions: tx.auto ? planTargets(allRefs, tx.keepParents).collisions : [],
       allRefs: [...new Set(allRefs)],
     },
   };

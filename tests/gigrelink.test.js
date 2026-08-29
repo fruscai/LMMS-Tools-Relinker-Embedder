@@ -163,3 +163,51 @@ test('only the supported sample nodes are rewritten', () => {
   assert.strictEqual(r.occurrences, 1);
   assert.ok(r.text.includes(other));
 });
+
+test('the same target name from two projects is one collision', () => {
+  // What each project sees alone.
+  assert.strictEqual(R.planTargets(['C:/lib/A/Kick.wav'], 0).collisions.length, 0);
+  assert.strictEqual(R.planTargets(['C:/lib/B/Kick.wav'], 0).collisions.length, 0);
+  // What the gig folder actually sees.
+  const union = R.planTargets(['C:/lib/A/Kick.wav', 'C:/lib/B/Kick.wav'], 0);
+  assert.strictEqual(union.collisions.length, 1);
+  assert.strictEqual(union.collisions[0].owners.length, 2);
+});
+
+test('a plan for one reference does not depend on the others', () => {
+  // Why collisions can be judged over the union while each project is still
+  // rewritten on its own.
+  const alone = R.planTargets(['C:/lib/A/Kick.wav'], 1).plan.get('C:/lib/A/Kick.wav');
+  const together = R.planTargets(['C:/lib/A/Kick.wav', 'C:/lib/B/Kick.wav'], 1)
+    .plan.get('C:/lib/A/Kick.wav');
+  assert.strictEqual(alone, together);
+  assert.strictEqual(alone, 'usergig:A/Kick.wav');
+});
+
+test('two projects sharing a name resolve once the parent folder is kept', () => {
+  const refs = ['C:/lib/A/Kick.wav', 'C:/lib/B/Kick.wav'];
+  const deeper = R.resolveDepth(refs);
+  assert.strictEqual(deeper.keepParents, 1);
+  assert.strictEqual(deeper.collisions.length, 0);
+});
+
+test('one file written two ways is one owner, not a collision', () => {
+  const refs = ['C:/Samples/Kick.wav', 'c:\\samples\\Kick.wav'];
+  const { plan, collisions } = R.planTargets(refs, 0);
+  assert.strictEqual(collisions.length, 0);
+  // both spellings still get rewritten
+  assert.strictEqual(plan.get('C:/Samples/Kick.wav'), 'usergig:Kick.wav');
+  assert.strictEqual(plan.get('c:\\samples\\Kick.wav'), 'usergig:Kick.wav');
+});
+
+test('two real files still collide when one also has a spelling variant', () => {
+  const refs = ['C:/lib/A/Kick.wav', 'c:\\lib\\a\\Kick.wav', 'C:/lib/B/Kick.wav'];
+  const { collisions } = R.planTargets(refs, 0);
+  assert.strictEqual(collisions.length, 1);
+  assert.strictEqual(collisions[0].owners.length, 2);
+});
+
+test('a spelling variant across two projects is still one owner', () => {
+  const refs = ['/lib/Kick.wav', '/LIB/kick.wav'];
+  assert.strictEqual(R.planTargets(refs, 0).collisions.length, 0);
+});

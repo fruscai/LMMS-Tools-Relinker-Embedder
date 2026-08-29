@@ -2,6 +2,22 @@
 
 ## 08-28-2026
 
+One gig folder, one name, across every project in the batch
+
+- Collisions were judged one project at a time, so two projects each holding a
+  different `Kick.wav` both became `usergig:Kick.wav` with nothing reported.
+  Reproduced before changing anything: scan showed 0 collisions, Repair stayed
+  enabled, and both output projects carried the same reference
+- `planTargets` maps a source to `GIG_PREFIX + depthOf(src)`, and `depthOf`
+  reads only that source. So each project's rewrite was already correct; only
+  the claim check needed the whole selection. Collisions are now computed once
+  from every reference gathered during the scan
+- ⚠️ One file can appear under more than one spelling, `C:/Samples/Kick.wav` and
+  `c:\samples\Kick.wav` being the same file on Windows. Counting raw strings
+  read that as two files and reported a collision that was not real. Owners are
+  now counted by normalised identity while every spelling keeps its own plan
+  entry
+
 One project's answers do not belong to the next
 
 - Ambiguity choices, the scan, the output and the download survived into a newly loaded project.
