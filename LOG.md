@@ -1,5 +1,34 @@
 # Daily Log
 
+## 08-29-2026
+
+The combined page matches the standalones
+
+- Ran the same nine scenarios against each standalone and against its pane
+  inside the combined page, driving the real buttons. Every field matched,
+  including the SHA-256 of the 133,843,807 byte embed, `8d02f35a42ed59e0` in
+  both
+- The panes report `location.origin` as `null`, which looked like it would
+  break the remembered gig folder. It does not. A value written to IndexedDB in
+  a pane survived a reload and was then readable from the standalone page, so
+  the stores are shared
+- Output ZIP hashes differ between runs. Not a pane problem: two runs in the
+  same page differ too, because the report records its run time. The repaired
+  project inside was identical every time
+- Hiding a pane mid operation changes nothing. The embed pane was hidden 300 ms
+  into a 7.0 s embed and produced the same digest, while the relink pane held
+  its own scan and finished ZIP throughout
+
+The download anchor was never in the document
+
+- `a.click()` was called on an anchor that had not been added to the page.
+  Chrome accepts that, Firefox does not start a download from a detached
+  anchor, so the tool would have looked like it did nothing there
+- Both tools now append the anchor, click it and remove it. Measured at click
+  time: `isConnected` true, parent BODY, and no anchor left behind afterwards
+- Same code in the standalone and the pane, so this was never a difference
+  between them, only a browser the footer does not list
+
 ## 08-28-2026
 
 One gig folder, one name, across every project in the batch

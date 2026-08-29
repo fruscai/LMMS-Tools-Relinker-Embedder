@@ -1041,7 +1041,10 @@ $('download-btn').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(state.output);
   a.download = $('output-name').textContent.trim();
+  // Firefox starts a download only from an anchor that is in the document.
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 15000);
 });
 

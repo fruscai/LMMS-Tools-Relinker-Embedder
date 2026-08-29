@@ -69,3 +69,16 @@ test('no assistant or editor name appears in the shipped files', () => {
     assert.ok(!banned.test(read(f).toString('utf8')), `tool name in ${f}`);
   }
 });
+
+test('the download anchor is in the document when it is clicked', () => {
+  // Firefox will not start a download from a detached anchor.
+  for (const f of ['lmms-path-relinker.html', 'lmms-sample-embedder.html']) {
+    const src = read(f).toString('utf8');
+    const block = src.slice(src.indexOf("$('download-btn').addEventListener"));
+    const handler = block.slice(0, block.indexOf('});') + 3);
+    assert.ok(handler.includes('appendChild(a)'), `${f}: anchor not attached`);
+    assert.ok(handler.indexOf('appendChild(a)') < handler.indexOf('a.click()'),
+      `${f}: anchor attached after the click`);
+    assert.ok(handler.includes('a.remove()'), `${f}: anchor left in the document`);
+  }
+});
