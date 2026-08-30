@@ -786,7 +786,7 @@ async function makeRecord(name, bytes, isDir = false, times = null) {
 
 /* ---------- source model ---------- */
 
-const state = { kind: null, label: '', items: [], scanned: null, output: null,
+const state = { kind: null, label: '', items: [], scanned: null, output: null, busy: false,
                 keepParents: 0, collisions: [] };
 
 const isProject = (name) => /\.(mmp|mmpz)$/i.test(name);
@@ -1014,6 +1014,10 @@ async function scanAll(settings, onProgress) {
 
 async function repairAll(settings, onProgress) {
   const tx = makeTransform(settings);
+  // The loop reads this list many times. Taking a copy means clearing or
+  // replacing the source midway cannot produce a half built archive that
+  // still reports success.
+  const items = [...state.items];
   if (tx.auto && settings.collisions && settings.collisions.length) {
     throw new Error('Two different samples would become the same gig folder name. Resolve that before repairing.');
   }
@@ -1021,11 +1025,11 @@ async function repairAll(settings, onProgress) {
   const log = [];
   const summary = {
     projectsProcessed: 0, projectsModified: 0, replacements: 0,
-    projectsSkipped: 0, validationFailures: 0,
+    projectsSkipped: 0, validationFailures: 0, unreadable: 0, unreadableNames: [],
   };
 
-  for (let i = 0; i < state.items.length; i++) {
-    const item = state.items[i];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
 
     if (item.isDir) {
       records.push(await makeRecord(item.name, new Uint8Array(0), true, item.times));
@@ -1100,14 +1104,22 @@ async function repairAll(settings, onProgress) {
       record.result = 'VALIDATION FAILED';
       record.message = err.message;
       summary.validationFailures++;
-      // Failed projects are copied through unmodified, never dropped.
+      // Failed projects are copied through unmodified. If even that read
+      // fails the file cannot be written, so it is named rather than dropped
+      // behind a summary that says everything was carried over.
       try {
         records.push(item.passthrough || (await makeRecord(item.name, await item.getBytes())));
-      } catch { /* unreadable: omit */ }
+      } catch (readErr) {
+        record.result = 'UNREADABLE';
+        record.message = readErr.message;
+        summary.unreadable = (summary.unreadable || 0) + 1;
+        if (!summary.unreadableNames) summary.unreadableNames = [];
+        summary.unreadableNames.push(item.name);
+      }
     }
 
     log.push(record);
-    if (onProgress) onProgress(i + 1, state.items.length);
+    if (onProgress) onProgress(i + 1, items.length);
   }
 
   const report = {
@@ -1213,12 +1225,24 @@ function setSource(kind, label, items) {
   refreshButtons();
 }
 
+/* A file input holds on to its last pick, so choosing the same file again
+   fires no change event and the tool looks dead. Clearing the value first
+   makes every pick count. */
+function resetFileInputs() {
+  for (const id of ['file-zip', 'file-folder', 'file-many']) {
+    const el = $(id);
+    if (el) el.value = '';
+  }
+}
+
 $('clear-source').addEventListener('click', () => {
+  if (state.busy) return;
   state.kind = null; state.items = []; state.scanned = null;
   state.keepParents = 0; state.collisions = [];
   $('collision-box').hidden = true;
   $('source-chip').hidden = true; dropzone.hidden = false;
   $('preview').hidden = true; $('result').hidden = true;
+  resetFileInputs();
   setStatus(''); refreshButtons();
 });
 
@@ -1284,6 +1308,7 @@ $('file-many').addEventListener('change', (e) => {
 document.addEventListener('drop', async (e) => {
   const files = [...(e.dataTransfer?.files || [])];
   if (!files.length) return;
+  if (state.busy) { setStatus('Still repairing. Wait for it to finish before loading anything else.', 'error'); return; }
   try {
     if (files.length === 1 && /\.zip$/i.test(files[0].name)) await useZipFile(files[0]);
     else useFileList(files, files.length === 1 ? files[0].name : `${files.length} file(s)`);
@@ -1420,6 +1445,8 @@ scanBtn.addEventListener('click', async () => {
 });
 
 repairBtn.addEventListener('click', async () => {
+  if (state.busy) return;
+  state.busy = true;
   setStatus('Repairing…'); scanBtn.disabled = true; repairBtn.disabled = true;
   try {
     const { blob, summary } = await repairAll(settings(), setProgress);
@@ -1442,7 +1469,7 @@ repairBtn.addEventListener('click', async () => {
     setStatus('Repair complete, press Save file.', 'done');
   } catch (err) {
     setStatus(err.message, 'error');
-  } finally { $('progress').hidden = true; refreshButtons(); }
+  } finally { state.busy = false; $('progress').hidden = true; refreshButtons(); }
 });
 
 $('download-btn').addEventListener('click', () => {

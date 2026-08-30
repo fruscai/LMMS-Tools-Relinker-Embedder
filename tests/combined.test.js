@@ -82,3 +82,34 @@ test('the download anchor is in the document when it is clicked', () => {
     assert.ok(handler.includes('a.remove()'), `${f}: anchor left in the document`);
   }
 });
+
+test('a run in progress locks the source in both tools', () => {
+  const relink = read('lmms-path-relinker.html').toString('utf8');
+  const embed = read('lmms-sample-embedder.html').toString('utf8');
+  assert.ok(relink.includes('state.busy'), 'relinker has no busy flag');
+  assert.ok(embed.includes('state.busy'), 'embedder has no busy flag');
+  // the guards must exist on the paths that can change the source mid-run
+  assert.ok(/document\.addEventListener\('drop'[\s\S]{0,400}state\.busy/.test(relink),
+    'relinker drop is not guarded');
+  assert.ok(/function useProjectFile[\s\S]{0,200}state\.busy/.test(embed),
+    'embedder load is not guarded');
+});
+
+test('file inputs are cleared so the same file can be picked twice', () => {
+  const relink = read('lmms-path-relinker.html').toString('utf8');
+  const embed = read('lmms-sample-embedder.html').toString('utf8');
+  assert.ok(relink.includes('function resetFileInputs'), 'relinker never resets its inputs');
+  assert.ok(/file-project[\s\S]{0,80}value = ''/.test(embed), 'embedder never resets its inputs');
+});
+
+test('the relinker names an unreadable project instead of dropping it silently', () => {
+  const relink = read('lmms-path-relinker.html').toString('utf8');
+  assert.ok(!relink.includes('/* unreadable: omit */'), 'unreadable projects still dropped silently');
+  assert.ok(relink.includes("record.result = 'UNREADABLE'"), 'no UNREADABLE result recorded');
+});
+
+test('an embed result is discarded when another project was loaded', () => {
+  const embed = read('lmms-sample-embedder.html').toString('utf8');
+  assert.ok(embed.includes('const runId = ++state.run'), 'runs are not tagged');
+  assert.ok(embed.includes('if (runId !== state.run) return;'), 'stale run can still publish output');
+});

@@ -478,6 +478,7 @@ function collectRefs(xml) {
 
 const state = { kind: null, label: '', items: [], samples: new Map(),
                 scanned: null, output: null, choices: new Map(), ambiguous: [],
+                busy: false, run: 0,
                 gigHandle: null, gigCount: 0 };
 
 const $ = (id) => document.getElementById(id);
@@ -687,7 +688,10 @@ function setSource(kind, label, items) {
 }
 
 $('clear-source').addEventListener('click', () => {
+  if (state.busy) return;
   state.items = []; state.samples.clear();
+  for (const id of ['file-project', 'file-samples']) { const el = $(id); if (el) el.value = ''; }
+  $('output-name').textContent = '';
   resetProjectState(state);
   $('download-btn').hidden = true;
   $('ambiguous-box').hidden = true;
@@ -700,8 +704,13 @@ $('clear-source').addEventListener('click', () => {
 /* ---------- input ---------- */
 
 function useProjectFile(f) {
+  if (state.busy) { setDropError('Still embedding. Wait for it to finish before loading another project.'); return; }
   if (!isProjectFile(f.name)) { setDropError('That is not an LMMS project file (.mmpz or .mmp).'); return; }
   resetProjectState(state);
+  // A file input keeps its last pick, so choosing the same file again would
+  // fire no change event.
+  for (const id of ['file-project', 'file-samples']) { const el = $(id); if (el) el.value = ''; }
+  $('output-name').textContent = '';
   $('download-btn').hidden = true;
   $('result-panel').hidden = true;
   $('ambiguous-box').hidden = true;
@@ -975,6 +984,12 @@ async function embedXml(xml, cache, counters) {
 $('run-btn').addEventListener('click', async () => {
   const item = targets()[0];
   if (!item) { setStatus('No project selected.', 'error'); return; }
+  if (state.busy) return;
+  state.busy = true;
+  // A run belongs to the project that started it. If another project is loaded
+  // before it finishes, the finished work is dropped rather than shown under
+  // the new project's name.
+  const runId = ++state.run;
   const outName = `${state.label.replace(/\.(mmpz|mmp)$/i, '')}-EMBEDDED`;
 
   setStatus('embedding…'); $('scan-btn').disabled = true; $('run-btn').disabled = true;
@@ -1008,6 +1023,7 @@ $('run-btn').addEventListener('click', async () => {
     const roundTrip = td.decode(compressed ? await decompressMmpz(payload) : payload);
     if (roundTrip !== updated) throw new Error('the written project did not read back identically');
 
+    if (runId !== state.run) return;
     state.output = new Blob([payload]);
     $('output-name').textContent = `${outName}${compressed ? '.mmpz' : '.mmp'}`;
     $('download-btn').hidden = false;
@@ -1029,11 +1045,13 @@ $('run-btn').addEventListener('click', async () => {
       counters.missing ? 'error' : 'done');
     $('download-btn').click();
   } catch (err) {
-    state.output = null;
-    $('download-btn').hidden = true;
-    $('result-panel').hidden = true;
-    setStatus(err.message, 'error');
-  } finally { $('progress').hidden = true; refresh(); }
+    if (runId === state.run) {
+      state.output = null;
+      $('download-btn').hidden = true;
+      $('result-panel').hidden = true;
+      setStatus(err.message, 'error');
+    }
+  } finally { state.busy = false; $('progress').hidden = true; refresh(); }
 });
 
 $('download-btn').addEventListener('click', () => {

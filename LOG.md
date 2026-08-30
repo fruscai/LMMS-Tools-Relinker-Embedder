@@ -2,6 +2,24 @@
 
 ## 08-29-2026
 
+Out of order clicks and mid-run source changes
+
+- An unreadable project was dropped from the output ZIP by a bare catch while the summary said
+  failed projects were copied through unchanged. It is now recorded as UNREADABLE with the read
+  error and counted
+- `repairAll` read `state.items` throughout its loop. Clearing the source midway ended the run
+  early, and dropping another replaced the rest, while the archive still reported success. It now
+  works from a copy taken at the start
+- Both tools carry a busy flag. During a repair or an embed, clear and drop are refused with a
+  plain message instead of corrupting the run
+- The embedder stamps each run and discards its own result if another project was loaded while it
+  worked, so a finished embed cannot appear under a different project's name
+- ⚠️ A file input keeps its last pick, so choosing the same file twice fired no change event and the
+  tool looked dead. Inputs are cleared on load and on clear
+- The stale-run race did not reproduce at first because the test project embedded inside 250 ms and
+  finished before the second load. It needed the 133 MB project to expose. Fixed on the evidence of
+  the mechanism rather than waiting for a bigger fixture to prove it
+
 The combined page matches the standalones
 
 - Ran the same nine scenarios against each standalone and against its pane
