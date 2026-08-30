@@ -435,10 +435,39 @@ if (!SUPPORTED) {
 const te = new TextEncoder();
 const td = new TextDecoder('utf-8', { fatal: true });
 
+/* A hostile project can be a few hundred kilobytes that inflate to gigabytes.
+   Reading the stream in chunks and stopping the moment the total passes the
+   limit means the memory is never allocated, rather than checking a size after
+   the whole thing is already in hand. The cap is generous: a real project with
+   embedded audio can be a few hundred megabytes. */
+const MAX_INFLATED = 512 * 1024 * 1024;
+
+async function readBounded(stream, limit = MAX_INFLATED, what = 'file') {
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > limit) {
+        await reader.cancel();
+        throw new Error(
+          `${what} expands past ${Math.round(limit / 1048576)} MB and was refused. ` +
+          `A file this size is either damaged or built to exhaust memory.`);
+      }
+      chunks.push(value);
+    }
+  } finally { try { reader.releaseLock(); } catch {} }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out;
+}
+
 async function streamThrough(bytes, transform) {
-  const blob = new Blob([bytes]);
-  const out = await new Response(blob.stream().pipeThrough(transform)).arrayBuffer();
-  return new Uint8Array(out);
+  return readBounded(new Blob([bytes]).stream().pipeThrough(transform));
 }
 
 /** zlib-wrapped deflate, the format Qt qCompress stores. */
@@ -640,6 +669,23 @@ function findEocd(view, length) {
  * files we do not modify are copied through in their original compressed form,
  * which preserves them exactly and keeps memory use low.
  */
+/* A ZIP entry name is attacker controlled. Names that climb out of the folder
+   or point at an absolute location are rewritten before they reach the output,
+   so an archive this tool produced cannot carry a traversal into whatever
+   unpacks it next. The entry is kept, only its name is made safe. */
+function safeEntryName(name) {
+  let n = String(name).replace(/\\/g, '/');
+  n = n.replace(/^[a-zA-Z]:/, '');          // drive letter
+  n = n.replace(/^\/+/, '');                 // absolute, and UNC once slashes go
+  const parts = [];
+  for (const seg of n.split('/')) {
+    if (!seg || seg === '.') continue;
+    if (seg === '..') { parts.pop(); continue; }
+    parts.push(seg);
+  }
+  return parts.join('/') || 'unnamed';
+}
+
 function readZip(buffer) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
@@ -674,7 +720,7 @@ function readZip(buffer) {
     const dataStart = localOffset + 30 + lhNameLen + lhExtraLen;
 
     entries.push({
-      name, method, crc, compSize, uncompSize, flags,
+      name: safeEntryName(name), method, crc, compSize, uncompSize, flags,
       // Carry the entry's original DOS timestamp so the rebuilt archive keeps
       // the dates the user's library is sorted by.
       time: view.getUint16(p + 12, true),
@@ -771,6 +817,7 @@ function buildZip(records) {
 }
 
 async function makeRecord(name, bytes, isDir = false, times = null) {
+  name = safeEntryName(name);
   const stamp = times ? { time: times.time, day: times.day } : {};
   if (isDir) {
     return { name, method: 0, crc: 0, compSize: 0, uncompSize: 0,

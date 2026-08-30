@@ -2,6 +2,21 @@
 
 ## 08-29-2026
 
+Hostile input
+
+- BIG ONE: **a sample filename could inject attributes into the page.** The embedder's `esc`
+  escaped `&`, `<` and `>` but not `"`, and candidate filenames go into `<option value="...">`.
+  A file named `Kick" onfocus="..." autofocus x="` put real attributes in the document. The
+  relinker's `escapeHtml` already handled quotes; only the embedder's did not
+- A 700 MB bomb compressing to 713,433 bytes was accepted, because the inflated stream was fully
+  buffered before its size was checked. Inflation is now read in chunks and cancelled the moment it
+  passes 512 MB. The bomb is refused in 214 ms
+- ZIP entry names were carried through untouched, so an archive could leave with `../../etc/passwd`
+  in it. Names are made safe when read and again when written
+- ⚠️ The first check of the XSS fix matched the HTML string and reported the injection still
+  present. It was matching the escaped text inside the value. Checking the parsed DOM instead
+  showed every option carrying only `value`. Match the tree, not the markup
+
 Out of order clicks and mid-run source changes
 
 - An unreadable project was dropped from the output ZIP by a bare catch while the summary said

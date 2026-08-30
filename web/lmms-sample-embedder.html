@@ -354,8 +354,39 @@ if (!SUPPORTED) {
 const te = new TextEncoder();
 const td = new TextDecoder('utf-8', { fatal: true });
 
+/* A hostile project can be a few hundred kilobytes that inflate to gigabytes.
+   Reading the stream in chunks and stopping the moment the total passes the
+   limit means the memory is never allocated, rather than checking a size after
+   the whole thing is already in hand. The cap is generous: a real project with
+   embedded audio can be a few hundred megabytes. */
+const MAX_INFLATED = 512 * 1024 * 1024;
+
+async function readBounded(stream, limit = MAX_INFLATED, what = 'file') {
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > limit) {
+        await reader.cancel();
+        throw new Error(
+          `${what} expands past ${Math.round(limit / 1048576)} MB and was refused. ` +
+          `A file this size is either damaged or built to exhaust memory.`);
+      }
+      chunks.push(value);
+    }
+  } finally { try { reader.releaseLock(); } catch {} }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out;
+}
+
 const through = async (bytes, t) =>
-  new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(t)).arrayBuffer());
+  readBounded(new Blob([bytes]).stream().pipeThrough(t));
 const inflateZlib = (b) => through(b, new DecompressionStream('deflate'));
 const deflateZlib = (b) => through(b, new CompressionStream('deflate'));
 const inflateRaw = (b) => through(b, new DecompressionStream('deflate-raw'));
@@ -366,6 +397,7 @@ const deflateRaw = (b) => through(b, new CompressionStream('deflate-raw'));
 async function decompressMmpz(bytes) {
   if (bytes.length < 5) throw new Error('too short to be a .mmpz');
   const declared = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, false);
+  if (declared > MAX_INFLATED) throw new Error(`declares ${declared} bytes, past what this tool will inflate`);
   const out = await inflateZlib(bytes.subarray(4));
   if (out.length !== declared) throw new Error(`declared ${declared} != actual ${out.length}`);
   return out;
@@ -483,7 +515,12 @@ const state = { kind: null, label: '', items: [], samples: new Map(),
 
 const $ = (id) => document.getElementById(id);
 const setStatus = (m, tone = '') => { $('status').textContent = m || ''; $('status').className = 'status' + (tone ? ' ' + tone : ''); };
-const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Quotes matter as much as angle brackets: these values land inside attributes,
+   and a file named  Kick" onfocus="...  would otherwise close the attribute and
+   add its own. */
+const esc = (v) => String(v ?? '')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 
 /* CORE START: pure logic, also loaded directly by tests/embedindex.test.js */
