@@ -653,7 +653,7 @@ function crc32(bytes) {
 
 /* ---------- ZIP reading ---------- */
 
-const SIG_EOCD = 0x06054b50, SIG_CEN = 0x02014b50;
+const SIG_EOCD = 0x06054b50, SIG_CEN = 0x02014b50, SIG_LOC = 0x04034b50;
 
 function findEocd(view, length) {
   const maxBack = Math.min(length, 66000);
@@ -677,13 +677,21 @@ function safeEntryName(name) {
   let n = String(name).replace(/\\/g, '/');
   n = n.replace(/^[a-zA-Z]:/, '');          // drive letter
   n = n.replace(/^\/+/, '');                 // absolute, and UNC once slashes go
+  n = n.replace(/\0/g, '');                 // a NUL truncates the name for some readers
   const parts = [];
   for (const seg of n.split('/')) {
     if (!seg || seg === '.') continue;
     if (seg === '..') { parts.pop(); continue; }
     parts.push(seg);
   }
-  return parts.join('/') || 'unnamed';
+  let out = parts.join('/') || 'unnamed';
+  // A ZIP stores the name length in two bytes. A longer name would wrap and
+  // describe a different name than the one written.
+  if (new TextEncoder().encode(out).length > 512) {
+    const tail = out.slice(-64).replace(/[^A-Za-z0-9._-]/g, '');
+    out = 'truncated-' + tail;
+  }
+  return out;
 }
 
 function readZip(buffer) {
@@ -699,8 +707,16 @@ function readZip(buffer) {
   }
 
   const entries = [];
+  // Every offset and length below comes from the archive itself. A hostile one
+  // can point anywhere, so each read is checked against the real file size
+  // rather than trusted.
+  const inRange = (off, len) => off >= 0 && len >= 0 && off + len <= bytes.length;
+  if (count > 20000) throw new Error(`ZIP declares ${count} entries, more than this tool will read`);
+  if (!inRange(cdOffset, 0)) throw new Error('Corrupt ZIP: central directory is outside the file');
+
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
+    if (!inRange(p, 46)) throw new Error('Corrupt ZIP: central directory runs past the end of the file');
     if (view.getUint32(p, true) !== SIG_CEN) throw new Error('Corrupt ZIP central directory');
     const flags = view.getUint16(p + 8, true);
     const method = view.getUint16(p + 10, true);
@@ -714,10 +730,15 @@ function readZip(buffer) {
     const nameBytes = bytes.subarray(p + 46, p + 46 + nameLen);
     const name = new TextDecoder('utf-8').decode(nameBytes);
 
+    if (!inRange(p + 46, nameLen)) throw new Error('Corrupt ZIP: entry name runs past the end of the file');
+
     // Locate the entry's data by re-reading its local header.
+    if (!inRange(localOffset, 30)) throw new Error('Corrupt ZIP: entry points outside the file');
+    if (view.getUint32(localOffset, true) !== SIG_LOC) throw new Error('Corrupt ZIP: entry has no local header');
     const lhNameLen = view.getUint16(localOffset + 26, true);
     const lhExtraLen = view.getUint16(localOffset + 28, true);
     const dataStart = localOffset + 30 + lhNameLen + lhExtraLen;
+    if (!inRange(dataStart, compSize)) throw new Error('Corrupt ZIP: entry data runs past the end of the file');
 
     entries.push({
       name: safeEntryName(name), method, crc, compSize, uncompSize, flags,
@@ -753,7 +774,30 @@ function dosDateTime(date = new Date()) {
  * Build a ZIP. Each record supplies already-compressed bytes plus its CRC and
  * sizes, so pass-through entries keep their original bytes untouched.
  */
+/* Sanitising names can map two different entries onto one, and the reports use
+   fixed names an archive could also contain. A duplicate would silently
+   overwrite its twin on extraction, so later ones are numbered. */
+function uniqueNames(records) {
+  const seen = new Set();
+  for (const r of records) {
+    if (r.isDir) continue;
+    let name = r.name;
+    if (seen.has(name)) {
+      const dot = name.lastIndexOf('.');
+      const stem = dot > 0 ? name.slice(0, dot) : name;
+      const ext = dot > 0 ? name.slice(dot) : '';
+      let n = 2;
+      while (seen.has(`${stem} (${n})${ext}`)) n++;
+      name = `${stem} (${n})${ext}`;
+      r.name = name;
+    }
+    seen.add(name);
+  }
+  return records;
+}
+
 function buildZip(records) {
+  records = uniqueNames(records);
   const fallback = dosDateTime();
   const chunks = [];
   const central = [];
@@ -1295,7 +1339,15 @@ $('clear-source').addEventListener('click', () => {
 
 /* --- input handling --- */
 
+/* The whole archive is held in memory to read it, so a hostile one is refused
+   by size before that happens rather than after. */
+const MAX_ARCHIVE = 1024 * 1024 * 1024;
+
 async function useZipFile(file) {
+  if (file.size > MAX_ARCHIVE) {
+    throw new Error(`That archive is ${Math.round(file.size / 1048576)} MB, past the ` +
+      `${Math.round(MAX_ARCHIVE / 1048576)} MB this tool will open. Use a folder instead.`);
+  }
   setStatus('Reading archive…');
   const entries = readZip(await file.arrayBuffer());
   const items = entries.map((e) => ({

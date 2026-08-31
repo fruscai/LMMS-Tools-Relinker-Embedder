@@ -2,6 +2,19 @@
 
 ## 08-29-2026
 
+Hardening the hardening
+
+- A ZIP archive is now refused by size before it is read, since reading it means holding all of it
+- Sanitised names can collide. `a/../x` and `../x` both become `x`, and the reports use fixed names
+  an archive could also carry. Duplicates are numbered rather than overwriting each other
+- A NUL in an entry name truncates it for some readers, and a name past 65,535 bytes wraps the two
+  byte length field. NULs are stripped and names bounded at 512 bytes
+- The ZIP parser trusted the archive's own offsets. Every one is now checked against the real file
+  size, entry count is capped, and a local header must carry its signature
+- The doubled memory in `readBounded` was raised and not fixed. Holding chunks then copying once is
+  what buffering a stream of unknown length costs, and a legitimate 500 MB project pays the same.
+  The protection that matters, refusing a bomb before the memory is committed, already works
+
 Hostile input
 
 - BIG ONE: **a sample filename could inject attributes into the page.** The embedder's `esc`

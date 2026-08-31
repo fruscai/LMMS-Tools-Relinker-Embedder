@@ -17,7 +17,7 @@ const src = (f) => fs.readFileSync(path.join(WEB, f), 'utf8');
 function slice(html, from, to) {
   const a = html.indexOf(from), b = html.indexOf(to);
   assert.ok(a !== -1 && b > a, `cannot slice ${from}`);
-  const c = { console }; vm.createContext(c);
+  const c = { console, TextEncoder, TextDecoder }; vm.createContext(c);
   vm.runInContext(html.slice(a, b), c);
   // top-level const lands in the context's lexical scope, not on the object
   return { get: (name) => vm.runInContext(name, c) };
@@ -81,4 +81,60 @@ test('a small file that inflates past the limit is rejected by size alone', () =
   assert.ok(comp.length < 2 * 1024 * 1024, 'fixture is not actually a bomb');
   const LIMIT = 512 * 1024 * 1024;
   assert.ok(raw.length > LIMIT, 'fixture does not exceed the limit');
+});
+
+function relinkCore() {
+  const html = src('lmms-path-relinker.html');
+  const a = html.indexOf('function safeEntryName'), b = html.indexOf('function readZip');
+  const c = { console, TextEncoder }; vm.createContext(c);
+  vm.runInContext(html.slice(a, b), c);
+  return vm.runInContext('safeEntryName', c);
+}
+
+const NUL = String.fromCharCode(0);
+
+test('a NUL byte cannot truncate an entry name', () => {
+  const safe = relinkCore();
+  assert.strictEqual(safe('good.mmpz' + NUL + '.exe'), 'good.mmpz.exe');
+  assert.ok(!safe('a' + NUL + 'b').includes(NUL), 'NUL survives');
+});
+
+test('an overlong entry name cannot wrap the two byte length field', () => {
+  const safe = relinkCore();
+  const out = safe('a'.repeat(70000) + '.mmpz');
+  assert.ok(new TextEncoder().encode(out).length <= 512, `name is ${out.length} long`);
+  assert.ok(out.startsWith('truncated-'), 'long name not marked as truncated');
+});
+
+test('two different hostile names cannot become one output entry', () => {
+  const html = src('lmms-path-relinker.html');
+  const a = html.indexOf('function uniqueNames'), b = html.indexOf('function buildZip');
+  const c = { console }; vm.createContext(c);
+  vm.runInContext(html.slice(a, b), c);
+  const uniqueNames = vm.runInContext('uniqueNames', c);
+  const out = uniqueNames([
+    { name: 'x.mmpz' }, { name: 'x.mmpz' }, { name: 'x.mmpz' }, { name: 'relink-report.json' },
+  ]);
+  assert.deepStrictEqual([...out].map((r) => r.name),
+    ['x.mmpz', 'x (2).mmpz', 'x (3).mmpz', 'relink-report.json']);
+});
+
+test('the zip parser checks every offset against the real file size', () => {
+  const html = src('lmms-path-relinker.html');
+  for (const guard of [
+    'const inRange =',
+    'central directory is outside the file',
+    'entry name runs past the end of the file',
+    'entry points outside the file',
+    'entry has no local header',
+    'entry data runs past the end of the file',
+  ]) {
+    assert.ok(html.includes(guard), `missing guard: ${guard}`);
+  }
+});
+
+test('an archive too large to hold is refused before it is read', () => {
+  const html = src('lmms-path-relinker.html');
+  assert.ok(html.includes('MAX_ARCHIVE'), 'no archive size cap');
+  assert.ok(/file\.size > MAX_ARCHIVE/.test(html), 'cap is not checked against the file');
 });
