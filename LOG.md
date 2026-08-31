@@ -2,6 +2,17 @@
 
 ## 08-29-2026
 
+The guards were rejecting real work
+
+- ⚠️ Two of the previous round's guards were defects. Stripping a trailing slash turned every
+  directory entry in an archive into an empty file, and a 512 byte name bound rewrote legitimate
+  nested paths, a real 545 byte path becoming `truncated--that-is-long-777...`. The trailing slash
+  is kept now and the bound is 65,000, which is where the two byte length field actually wraps
+- A filename beginning with `=`, `+`, `-` or `@` was written into the CSV report unchanged and would
+  be read as a formula by a spreadsheet. Those values are prefixed with an apostrophe
+- An archive carrying `relink-report.csv` took that name and pushed the real report to `(2)`, so the
+  file the user opens held someone else's content. The archive's copy is renamed instead
+
 Hardening the hardening
 
 - A ZIP archive is now refused by size before it is read, since reading it means holding all of it

@@ -684,14 +684,18 @@ function safeEntryName(name) {
     if (seg === '..') { parts.pop(); continue; }
     parts.push(seg);
   }
+  // A trailing slash is how a ZIP marks a directory. Dropping it turned every
+  // folder in the archive into an empty file.
+  const isDir = /\/$/.test(n);
   let out = parts.join('/') || 'unnamed';
-  // A ZIP stores the name length in two bytes. A longer name would wrap and
-  // describe a different name than the one written.
-  if (new TextEncoder().encode(out).length > 512) {
+  // A ZIP stores the name length in two bytes, so only a name past that field
+  // is a problem. Anything shorter is a real path and is left alone: several
+  // valid folder names in a row easily pass a few hundred bytes.
+  if (new TextEncoder().encode(out).length > 65000) {
     const tail = out.slice(-64).replace(/[^A-Za-z0-9._-]/g, '');
     out = 'truncated-' + tail;
   }
-  return out;
+  return isDir ? out + '/' : out;
 }
 
 function readZip(buffer) {
@@ -777,8 +781,18 @@ function dosDateTime(date = new Date()) {
 /* Sanitising names can map two different entries onto one, and the reports use
    fixed names an archive could also contain. A duplicate would silently
    overwrite its twin on extraction, so later ones are numbered. */
+const REPORT_NAMES = ['relink-report.json', 'relink-report.csv'];
+
 function uniqueNames(records) {
   const seen = new Set();
+  // The reports are what the user opens to see what happened, so they keep
+  // their names. An archive carrying files of the same name is renamed instead,
+  // rather than leaving its content sitting under the name of the report.
+  for (const r of records) {
+    if (!r.isDir && REPORT_NAMES.includes(r.name) && !r.isReport) {
+      r.name = r.name.replace(/(\.[^.]+)$/, ' (from archive)$1');
+    }
+  }
   for (const r of records) {
     if (r.isDir) continue;
     let name = r.name;
@@ -1225,8 +1239,11 @@ async function repairAll(settings, onProgress) {
     summary, files: log,
   };
 
-  records.push(await makeRecord('relink-report.json', te.encode(JSON.stringify(report, null, 2))));
-  records.push(await makeRecord('relink-report.csv', te.encode(toCsv(log))));
+  const jsonReport = await makeRecord('relink-report.json', te.encode(JSON.stringify(report, null, 2)));
+  const csvReport = await makeRecord('relink-report.csv', te.encode(toCsv(log)));
+  jsonReport.isReport = true;
+  csvReport.isReport = true;
+  records.push(jsonReport, csvReport);
 
   return { blob: buildZip(records), summary };
 }
@@ -1234,7 +1251,11 @@ async function repairAll(settings, onProgress) {
 function toCsv(rows) {
   const head = ['filename','format','occurrences','old_path','new_path','decompression','recompression','round_trip','result','message'];
   const esc = (v) => {
-    const s = v === undefined || v === null ? '' : String(v);
+    let s = v === undefined || v === null ? '' : String(v);
+    // A filename starting with = + - or @ is read as a formula by spreadsheet
+    // software. These names come from the archive, so they are data and are
+    // made to stay data.
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   return [head.join(',')].concat(rows.map((r) => [

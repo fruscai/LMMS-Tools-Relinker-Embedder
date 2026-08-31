@@ -108,15 +108,15 @@ test('an overlong entry name cannot wrap the two byte length field', () => {
 
 test('two different hostile names cannot become one output entry', () => {
   const html = src('lmms-path-relinker.html');
-  const a = html.indexOf('function uniqueNames'), b = html.indexOf('function buildZip');
+  const a = html.indexOf('const REPORT_NAMES'), b = html.indexOf('function buildZip');
   const c = { console }; vm.createContext(c);
   vm.runInContext(html.slice(a, b), c);
   const uniqueNames = vm.runInContext('uniqueNames', c);
   const out = uniqueNames([
-    { name: 'x.mmpz' }, { name: 'x.mmpz' }, { name: 'x.mmpz' }, { name: 'relink-report.json' },
+    { name: 'x.mmpz' }, { name: 'x.mmpz' }, { name: 'x.mmpz' },
   ]);
   assert.deepStrictEqual([...out].map((r) => r.name),
-    ['x.mmpz', 'x (2).mmpz', 'x (3).mmpz', 'relink-report.json']);
+    ['x.mmpz', 'x (2).mmpz', 'x (3).mmpz']);
 });
 
 test('the zip parser checks every offset against the real file size', () => {
@@ -137,4 +137,48 @@ test('an archive too large to hold is refused before it is read', () => {
   const html = src('lmms-path-relinker.html');
   assert.ok(html.includes('MAX_ARCHIVE'), 'no archive size cap');
   assert.ok(/file\.size > MAX_ARCHIVE/.test(html), 'cap is not checked against the file');
+});
+
+
+test('a filename cannot become a spreadsheet formula in the report', () => {
+  const html = src('lmms-path-relinker.html');
+  const a = html.indexOf('function toCsv'), b = html.indexOf('/* ---------- UI ----------');
+  const c = { console }; vm.createContext(c);
+  vm.runInContext(html.slice(a, b), c);
+  const toCsv = vm.runInContext('toCsv', c);
+  for (const lead of ['=', '+', '-', '@']) {
+    const row = toCsv([{ filename: lead + 'cmd|calc!A1', result: 'OK' }]).split('\n')[1];
+    assert.ok(row.startsWith("'" + lead), `${lead} is not neutralised: ${row}`);
+  }
+  // an ordinary name is untouched
+  assert.ok(toCsv([{ filename: 'song.mmpz' }]).split('\n')[1].startsWith('song.mmpz'));
+});
+
+test('the reports keep their own names when the archive carries the same ones', () => {
+  const html = src('lmms-path-relinker.html');
+  const a = html.indexOf('const REPORT_NAMES'), b = html.indexOf('function buildZip');
+  const c = { console }; vm.createContext(c);
+  vm.runInContext(html.slice(a, b), c);
+  const uniqueNames = vm.runInContext('uniqueNames', c);
+  const out = uniqueNames([
+    { name: 'relink-report.csv' },
+    { name: 'relink-report.csv', isReport: true },
+  ]);
+  const names = [...out].map((r) => r.name);
+  assert.deepStrictEqual(names, ['relink-report (from archive).csv', 'relink-report.csv']);
+});
+
+test('a directory entry stays a directory', () => {
+  const safe = relinkCore();
+  assert.strictEqual(safe('samples/'), 'samples/');
+  assert.strictEqual(safe('../../samples/'), 'samples/');
+  assert.strictEqual(safe('samples/kick.wav'), 'samples/kick.wav');
+});
+
+test('a long but legitimate nested path is left alone', () => {
+  const safe = relinkCore();
+  const deep = 'project/' + Array.from({ length: 8 },
+    (_, i) => 'folder-' + String(i).repeat(40)).join('/') + '/f.mmpz';
+  assert.ok(new TextEncoder().encode(deep).length > 300, 'fixture is not long enough to matter');
+  assert.strictEqual(safe(deep), deep, 'a real nested path was rewritten');
 });
